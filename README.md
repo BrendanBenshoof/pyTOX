@@ -11,3 +11,5 @@ portability
 
 New issues:
 The current design of CHRONUS's message passing layer are lazy and insecure. This is a proof of concept not a product.
+
+currently running an etry point at 131.96.131.124:10000
