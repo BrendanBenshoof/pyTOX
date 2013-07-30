@@ -2,25 +2,22 @@
 ###Startup and commandline file
 import service
 import shelver as db 
-import Topology_Service
 import hash_util
 import random
 import simple_network
 import node
 import time
-import filesystem_service
-import map_reduce
 import Queue
-
 from threading import *
 import sys
+import chat_service
 
 
 
 import json
 from urllib2 import urlopen
 
-local_mode=False
+local_mode=True
 
 def myIP():
     if not local_mode:
@@ -60,9 +57,7 @@ def setup_Node(addr="localhost", port=None):
     add_service(db.Shelver(database_name))
     add_service(service.Internal_Service())
     add_service(service.ECHO_service())
-    add_service(Topology_Service.Topology())
-    add_service(filesystem_service.FileSystem())
-    add_service(map_reduce.Map_Reduce_Service())
+    add_service(chat_service.ChatService())
     ####
     attach_services()
 
@@ -74,7 +69,7 @@ def join_ring(node_name, node_port):
 def no_join():
     node.create()
 
-def console():
+def console():##need to re-write into something CURSE-y
     cmd = "-"
     loaded_script = Queue.Queue()
     try:
