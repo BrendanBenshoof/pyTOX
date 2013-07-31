@@ -63,7 +63,10 @@ class NETWORK_SERVICE(object):
     def sender_loop(self):
             while True:
                 priority, dest, msg = self.tosend.get(True)
-                self.client_send(dest,msg)
+                try:
+                    self.client_send(dest,msg)
+                except:
+                    print "!!there was a networking issue!!"
                 self.tosend.task_done()
 
     def send_message(self,msg,dest):
@@ -101,11 +104,11 @@ class NETWORK_SERVICE(object):
             self.tosend.put()
 
     def client_send(self, dest, msg):
-        #print msg.service, msg.type, str(dest)
+        #pass#print msg.service, msg.type, str(dest)
         HOST = dest.IPAddr
         PORT = dest.ctrlPort
         DATA = msg.serialize()
-        ##print len(DATA)
+        ##pass#print len(DATA)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(1.0)
         length = len(DATA)
@@ -114,11 +117,11 @@ class NETWORK_SERVICE(object):
         length = len(DATA)/CHUNKSIZE
         byte1 = length >> 8
         byte2 = length % (2**8)
-        ###print byte1, byte2
+        ###pass#print byte1, byte2
         b1 = chr(byte1)
         b2 = chr(byte2)
-        ###print b1, b2, ord(b1), ord(b2)
-        #print "<",
+        ###pass#print b1, b2, ord(b1), ord(b2)
+        #pass#print "<",
         try:
             # Connect to server and send data
             sock.connect((HOST, PORT))
@@ -135,15 +138,15 @@ class NETWORK_SERVICE(object):
             while len(ack) < 1:
                 ack = sock.recv(1)
         except socket.error:
-            ##print e
+            ##pass#print e
             #sock.close()
-            print "SOCKET ERROR"
+            pass#print "SOCKET ERROR"
             node.message_failed(msg,dest)
             #self.update_messages_in_queue(dest)
         finally:
-            #print ">",
+            #pass#print ">",
             sock.close()
-            ##print DATA[-20:],len(DATA)%8
+            ##pass#print DATA[-20:],len(DATA)%8
             return True
 
 
@@ -166,12 +169,12 @@ class MyTCPHandler(BaseRequestHandler):
         # self.request is the TCP socket connected to the client
         b1 = ""
         b2 = ""
-        #print "[",
+        #pass#print "[",
         while len(b1) == 0:
             b1 = self.request.recv(1)
         while len(b2) == 0:
             b2 = self.request.recv(1)
-        #print b1, b2
+        #pass#print b1, b2
         b1 = ord(b1)
         b2 = ord(b2)
         length = ((b1 << 8) + b2)*CHUNKSIZE
@@ -180,7 +183,7 @@ class MyTCPHandler(BaseRequestHandler):
         data = ""
         data0=""
         while length > 0:
-            ###print length
+            ###pass#print length
             buff = CHUNKSIZE
             if length < CHUNKSIZE:
                 buff =length
@@ -190,11 +193,11 @@ class MyTCPHandler(BaseRequestHandler):
         self.request.send("0")
         old_length = len(data)
         data = data.rstrip(" ")
-        ##print "incoming length: " +str(len(data))
+        ##pass#print "incoming length: " +str(len(data))
         msg = message.Message.deserialize(data)
-        #print "]",
+        #pass#print "]",
         node.handle_message(msg)
 
 
     def handle_error(self, request, client_address):
-        print client_address,"tried to talk to me and failed"
+        pass#print client_address,"tried to talk to me and failed"

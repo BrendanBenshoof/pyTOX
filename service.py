@@ -60,7 +60,7 @@ class ECHO_service(Service):
             raise Exception("Mismatched service recipient for message.")
 
         for k in msg.contents.keys():
-            print msg.get_content(k)
+            pass#print msg.get_content(k)
 
 
 
@@ -85,7 +85,7 @@ class Internal_Service(Service):
         if node.TEST_MODE:
             if msg.origin_node != node.thisNode:
                 pass
-                #print "Got " + str(msgtype) +  " from " + str(msg.origin_node)
+                #pass#print "Got " + str(msgtype) +  " from " + str(msg.origin_node)
         if msgtype == FIND:  # This might not ever happen with new changes
             response = Update_Message(self.owner, msg.reply_to.key, msg.finger)
         elif msgtype == UPDATE:
@@ -123,14 +123,14 @@ class Internal_Service(Service):
                         fingers[f]+=1
                     except KeyError:
                         fingers[f]=1
-            print "there are: "+str(count)+" finger entries"
+            pass#print "there are: "+str(count)+" finger entries"
             for f in fingers.keys():
-                print f,":",fingers[f]
+                pass#print f,":",fingers[f]
         elif comand_st == "quit":
             node.my_polite_exit()
         elif comand_st == "connect":
             args = arg_str.split(":")
-            print args
+            pass#print args
             nodeip = args[0]
             nodePort = int(args[1])
             newnode = node.Node_Info(nodeip, nodePort)

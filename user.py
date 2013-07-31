@@ -2,6 +2,7 @@
 import base64
 import cPickle as Pickle
 import hash_util
+#import M2Crypto
 
 class UserInfo(object): #this class is just a struct you can use transmit user info with
 	def __init__(self):

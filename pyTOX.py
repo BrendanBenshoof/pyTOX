@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 ###Startup and commandline file
 import service
-import shelver as db 
 import hash_util
 import random
 import simple_network
@@ -11,18 +10,20 @@ import Queue
 from threading import *
 import sys
 import chat_service
+import user
 
-
+from Crypto.PublicKey import RSA
 
 import json
 from urllib2 import urlopen
 
 local_mode=False
+userinfo=None
 
 def myIP():
     if not local_mode:
         myip = json.load(urlopen('http://httpbin.org/ip'))['origin']
-        print "just got my ip:", myip
+        pass#print "just got my ip:", myip
         return myip
     else:
         return "127.0.0.1"
@@ -54,7 +55,6 @@ def setup_Node(addr="localhost", port=None):
     node.net_server = simple_network.NETWORK_SERVICE("", node.ctrlPort)
     #### setup services here
     database_name = str(node.thisNode.key)+".db"
-    add_service(db.Shelver(database_name))
     add_service(service.Internal_Service())
     add_service(service.ECHO_service())
     add_service(chat_service.ChatService())
@@ -71,67 +71,27 @@ def no_join():
 
 def console():##need to re-write into something CURSE-y
     cmd = "-"
-    loaded_script = Queue.Queue()
-    try:
-        if loaded_script.empty():
-            cmd = raw_input()
-        else:
-            cmd = loaded_script.get()
-            loaded_script.task_done()
-    except EOFError: #the user does not have a terminal
-        pass
-    while not ( cmd == "q" or cmd == "Q"):
-        command, args = None, None
-        splitted = cmd.split(' ',1)
-        if len(splitted) >= 1:
-            command = splitted[0]
-        if len(splitted) == 2:
-            args = splitted[1]
-        if command in commands.keys():
-            mytarget = lambda: commands[command].handle_command(command, args)
-            t = Thread(target=mytarget)
-            t.daemon = True
-            t.start()
-        elif command == "run":
-            file2open = file(args,"r")
-            for l in file2open:
-                loaded_script.put(l)
-            file2open.close()
-        elif command == "stat":
-            input_size = node.todo.qsize();
-            print "backlog: "+str(input_size)
-        else:
-            print "successor  ", node.successor
-            print "predecessor", node.predecessor
-        try:
-            if loaded_script.empty():
-                cmd = raw_input()
-            else:
-                cmd = loaded_script.get()
-                loaded_script.task_done()
-        except EOFError: #the user does not have a terminal
-            print "I do not see a terminal!"
-            time.sleep(1)
-            pass
-    node.net_server.stop()
+    state = "console" #state can also be chat
+    command_dict = {}
+
 
 def main():
     myip = myIP()
     node.IPAddr = myip
     args = sys.argv
-    if len(args) > 1 and args[1] != "?":
-        local_port = int(args[1]) 
-    else: 
-        local_port = random.randint(9000, 9999)
-        
-    other_IP = args[2] if len(args) > 2 else None
-    other_port = int(args[3]) if len(args) > 3 else None
-
-    setup_Node(addr=myip,port=local_port)
-    if not other_IP is None and not other_port is None:
-        join_ring(other_IP, other_port)
-    else:
-        no_join()
+    local_port = 10000
+    done = False
+    while not done:
+        try:
+            setup_Node(addr=myip,port=local_port)
+            done = True
+        except:
+            local_port+=1
+    servers = file("userinfo/entryPoints.txt")
+    server_data = servers.read().split("/n")
+    for l in server_data:
+        server, port = l.split(":",1)
+        join_ring(server, int(port))
     node.startup()
     console()
 
