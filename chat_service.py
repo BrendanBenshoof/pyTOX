@@ -32,11 +32,12 @@ class ChatService(service.Service):
     def attach_to_console(self):
         ### return a dict of command-strings
         try:
-            myhandle = raw_input("what is your name?")
+            myhandle = raw_input("what is your name? ")
         except:
             myhandle = "SERVER"+str(random.random() )
         self.user = UserInfo.generate(myhandle)
         self.owner.key = self.user.hashloc
+        polite_print("My Key is: "+self.owner.key.key)
         return ["send"]
 
     def handle_command(self, command_st, arg_str):

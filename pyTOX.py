@@ -14,6 +14,8 @@ import user
 
 from termcolor import colored
 
+from globals import *
+
 import json
 from urllib2 import urlopen
 
@@ -81,7 +83,8 @@ def console():##need to re-write into something CURSE-y
             break
         try:
             mycommand, args = user_input.split(" ",1)
-            services["CHAT"].handle_command(mycommand, args)
+            service_to_handle = commands[mycommand]
+            service_to_handle.handle_command(mycommand, args)
         except ValueError:
             pass
 
@@ -92,21 +95,28 @@ def main():
     args = sys.argv
     local_port = 10000
     done = False
-    while not done:
-        try:
-            setup_Node(addr=myip,port=local_port)
-            done = True
-        except:
-            local_port+=1
+    try:
+        setup_Node(addr=myip,port=local_port)
+        done = True
+    except:
+        polite_print("!!There was a fatal networking error!!")
+        return
+    polite_print("I settled on using port:"+str(local_port))
+    node.create()
+    node.startup()
     servers = file("userinfo/entryPoints.txt")
     server_data = servers.read().split("\n")
     for l in server_data:
-        try:
-            server, port = l.split(":",1)
-            join_ring(server, int(port))
-        except ValueError:
-            pass
-    node.startup()
+        if( len(l) > 0):
+            polite_print("trying: "+l)
+            addr, port, hash_str= l.split(":")
+            port = int(port)
+            n = node.Node_Info(addr,port)
+            n.key.key = hash_str
+            
+            #services[SERVICE_INTERNAL].handle_command("connect",l)
+
+    
     console()
 
 if __name__ == "__main__":
