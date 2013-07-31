@@ -99,10 +99,13 @@ def main():
         except:
             local_port+=1
     servers = file("userinfo/entryPoints.txt")
-    server_data = servers.read().split("/n")
+    server_data = servers.read().split("\n")
     for l in server_data:
-        server, port = l.split(":",1)
-        join_ring(server, int(port))
+        try:
+            server, port = l.split(":",1)
+            join_ring(server, int(port))
+        except ValueError:
+            pass
     node.startup()
     console()
 
