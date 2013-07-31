@@ -102,8 +102,7 @@ def main():
         polite_print("!!There was a fatal networking error!!")
         return
     polite_print("I settled on using port:"+str(local_port))
-    node.create()
-    node.startup()
+
     servers = file("userinfo/entryPoints.txt")
     server_data = servers.read().split("\n")
     for l in server_data:
@@ -113,10 +112,10 @@ def main():
             port = int(port)
             n = node.Node_Info(addr,port)
             n.key.key = hash_str
-            
+            node.join(n)
             #services[SERVICE_INTERNAL].handle_command("connect",l)
 
-    
+    node.startup()
     console()
 
 if __name__ == "__main__":
