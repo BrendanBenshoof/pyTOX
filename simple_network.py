@@ -6,6 +6,7 @@ import node
 import message
 from Queue import *
 import time
+from globals import *
 
 CHUNKSIZE = 64
 
@@ -66,7 +67,7 @@ class NETWORK_SERVICE(object):
                 try:
                     self.client_send(dest,msg)
                 except:
-                    print "!!there was a networking issue!!"
+                    polite_print("!!there was a networking issue. Don't Panic!!")
                 self.tosend.task_done()
 
     def send_message(self,msg,dest):
@@ -140,7 +141,7 @@ class NETWORK_SERVICE(object):
         except socket.error:
             ##pass#print e
             #sock.close()
-            pass#print "SOCKET ERROR"
+            #print "SOCKET ERROR"
             node.message_failed(msg,dest)
             #self.update_messages_in_queue(dest)
         finally:

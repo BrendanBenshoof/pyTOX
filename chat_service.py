@@ -9,6 +9,9 @@ from user import *
 from globals import *
 import random
 
+import sys
+from termcolor import colored
+
 class Chat_Message(Message):
     def __init__(self, origin_node, destination_key, to, fromguy, chat):
         Message.__init__(self, "CHAT", "CHAT")
@@ -49,9 +52,9 @@ class ChatService(service.Service):
         if not msg.service == self.service_id:
             return False
         if msg.get_content("to") != self.user.handle:
-            print "Got somebody else's message"
+            polite_print( "Got somebody else's message")
             return True
         else:
             otherguy = msg.get_content("from").handle
-            print otherguy+": " + msg.get_content("chat")
+            polite_print( colored("["+otherguy+"]", "green")+":"+ msg.get_content("chat"))
  

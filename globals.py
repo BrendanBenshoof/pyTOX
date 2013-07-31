@@ -1,4 +1,5 @@
-
+import readline, sys
+from termcolor import *
 #constants
 
 SERVICE_SHELVER = "SERVICE_SHELVER"
@@ -24,4 +25,14 @@ MESSAGE_START_SERVER = "START_SERVER"
 MESSAGE_STOP_SERVER = "STOP_SERVER"
 MESSAGE_SEND_PEER_DATA = "SEND_PEER_DATA"
 MESSAGE_DISCONNECT_PEER = "DISCONNECT_PEER"
+
+CURRENT_CONTEXT_PROMPT = colored("COMMAND","blue")
+
+
+def polite_print(astr):
+    sys.stdout.write('\r'+' '*(len(readline.get_line_buffer())+2)+'\r')
+    print astr
+    sys.stdout.write("["+CURRENT_CONTEXT_PROMPT+"]:" + readline.get_line_buffer())
+    sys.stdout.flush()
+
 

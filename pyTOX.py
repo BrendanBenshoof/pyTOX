@@ -12,7 +12,7 @@ import sys
 import chat_service
 import user
 
-from Crypto.PublicKey import RSA
+from termcolor import colored
 
 import json
 from urllib2 import urlopen
@@ -54,7 +54,7 @@ def setup_Node(addr="localhost", port=None):
     #node.net_server = dummy_network.start(node.thisNode, node.handle_message)
     node.net_server = simple_network.NETWORK_SERVICE("", node.ctrlPort)
     #### setup services here
-    database_name = str(node.thisNode.key)+".db"
+    #database_name = str(node.thisNode.key)+".db"
     add_service(service.Internal_Service())
     add_service(service.ECHO_service())
     add_service(chat_service.ChatService())
@@ -71,8 +71,19 @@ def no_join():
 
 def console():##need to re-write into something CURSE-y
     cmd = "-"
-    state = "console" #state can also be chat
+    state = "command" #state can also be chat
     command_dict = {}
+    running = True
+    while(running):
+        print "["+colored("COMMAND:","blue")+"]:",
+        user_input = raw_input()
+        if user_input == "exit" or user_input == "quit":
+            break
+        try:
+            mycommand, args = user_input.split(" ",1)
+            services["CHAT"].handle_command(mycommand, args)
+        except ValueError:
+            pass
 
 
 def main():
