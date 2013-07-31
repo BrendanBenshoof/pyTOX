@@ -25,7 +25,7 @@ userinfo=None
 def myIP():
     if not local_mode:
         myip = json.load(urlopen('http://httpbin.org/ip'))['origin']
-        pass#print "just got my ip:", myip
+        polite_print("just got my ip: "+myip)
         return myip
     else:
         return "127.0.0.1"
@@ -64,8 +64,9 @@ def setup_Node(addr="localhost", port=None):
     attach_services()
 
 
-def join_ring(node_name, node_port):
+def join_ring(node_name, node_port, other_key):
     othernode = node.Node_Info(node_name, node_port)
+    othernode.key = hash_util.Key(other_key)
     node.join(othernode)
 
 def no_join():
@@ -79,11 +80,17 @@ def console():##need to re-write into something CURSE-y
     while(running):
         print "["+colored("COMMAND:","blue")+"]:",
         user_input = raw_input()
+        print user_input
         if user_input == "exit" or user_input == "quit":
             break
         try:
             mycommand, args = user_input.split(" ",1)
+            print mycommand, args, services, commands
+        except ValueError:
+            mycommand, args = user_input,""
+        try:
             service_to_handle = commands[mycommand]
+            print service_to_handle
             service_to_handle.handle_command(mycommand, args)
         except ValueError:
             pass
@@ -93,30 +100,21 @@ def main():
     myip = myIP()
     node.IPAddr = myip
     args = sys.argv
-    local_port = 10000
-    done = False
-    try:
-        setup_Node(addr=myip,port=local_port)
-        done = True
-    except:
-        polite_print("!!There was a fatal networking error!!")
-        return
-    polite_print("I settled on using port:"+str(local_port))
-
-    servers = file("userinfo/entryPoints.txt")
-    server_data = servers.read().split("\n")
-    for l in server_data:
-        if( len(l) > 0):
-            polite_print("trying: "+l)
-            addr, port, hash_str= l.split(":")
-            port = int(port)
-            n = node.Node_Info(addr,port)
-            n.key.key = hash_str
-            node.join(n)
-            #services[SERVICE_INTERNAL].handle_command("connect",l)
-
+    if len(args) > 1 and args[1] != "?":
+        local_port = int(args[1]) 
+    else: 
+        local_port = random.randint(9000, 9999)
+ 
+    setup_Node(addr=myip,port=local_port)
+    otherStr = args[2] if len(args) > 2 else None
+    if not otherStr is None:
+        other_IP, other_port, other_key = otherStr.split(":",2)
+        join_ring(other_IP, other_port, other_key)
+    else:
+        no_join()
     node.startup()
     console()
+
 
 if __name__ == "__main__":
     main()
