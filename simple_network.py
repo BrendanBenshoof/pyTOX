@@ -105,6 +105,7 @@ class NETWORK_SERVICE(object):
             self.tosend.put()
 
     def client_send(self, dest, msg):
+        print "send message", dest, msg
         #pass#print msg.service, msg.type, str(dest)
         HOST = dest.IPAddr
         PORT = dest.ctrlPort
@@ -142,6 +143,7 @@ class NETWORK_SERVICE(object):
             ##pass#print e
             #sock.close()
             #print "SOCKET ERROR"
+            print "message failed"
             node.message_failed(msg,dest)
             #self.update_messages_in_queue(dest)
         finally:
@@ -167,6 +169,7 @@ class MyTCPHandler(BaseRequestHandler):
 
 
     def handle(self):
+        print "I got a message!"
         # self.request is the TCP socket connected to the client
         b1 = ""
         b2 = ""

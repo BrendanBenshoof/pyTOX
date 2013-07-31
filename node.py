@@ -23,8 +23,8 @@ import Queue
 
 
 # Debug variables
-TEST_MODE = False   #duh
-VERBOSE = False      # True for various debug messages, False for a more silent execution.
+TEST_MODE = True   #duh
+VERBOSE = True     # True for various debug messages, False for a more silent execution.
 net_server = None
 MAINTENANCE_PERIOD = 2.0
 

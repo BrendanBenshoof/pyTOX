@@ -80,20 +80,19 @@ def console():##need to re-write into something CURSE-y
     while(running):
         print "["+colored("COMMAND:","blue")+"]:",
         user_input = raw_input()
-        print user_input
         if user_input == "exit" or user_input == "quit":
             break
         try:
             mycommand, args = user_input.split(" ",1)
             print mycommand, args, services, commands
         except ValueError:
-            mycommand, args = user_input,""
-        try:
-            service_to_handle = commands[mycommand]
-            print service_to_handle
-            service_to_handle.handle_command(mycommand, args)
-        except ValueError:
-            pass
+            mycommand = user_input
+            args = ""
+        if mycommand == "send":
+            services["CHAT"].handle_command(mycommand, args)
+        elif mycommand == "fingers":
+            services[SERVICE_INTERNAL].handle_command(mycommand, args)
+
 
 
 def main():
@@ -110,6 +109,7 @@ def main():
     if not otherStr is None:
         other_IP, other_port, other_key = otherStr.split(":",2)
         join_ring(other_IP, other_port, other_key)
+        print other_IP, other_port, other_key
     else:
         no_join()
     node.startup()
