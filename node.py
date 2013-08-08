@@ -23,8 +23,8 @@ import Queue
 
 
 # Debug variables
-TEST_MODE = True   #duh
-VERBOSE = True     # True for various debug messages, False for a more silent execution.
+TEST_MODE = False   #duh
+VERBOSE = False      # True for various debug messages, False for a more silent execution.
 net_server = None
 MAINTENANCE_PERIOD = 2.0
 
@@ -60,7 +60,7 @@ class Node_Info():
 
     def  __hash__(self):
         return int(self.key.key,16)
-
+register(Node_Info)
 
 """This class represents the current node in the Chord Network.
 We try to follow Stoica et al's scheme as closely as possible here,
@@ -347,9 +347,9 @@ def worker_handle_message(msg):
         try:
             myservice = services[msg.service]
         except KeyError:
-            #print "msg dropped!\n service was:", msg, msg.service
-            #print "attached services are:"
-            #print services.keys()
+            print "msg dropped!\n service was:", msg, msg.service
+            print "attached services are:"
+            print services.keys()
             return
         myservice.handle_message(msg)
     else:
@@ -390,9 +390,8 @@ def estimate_ring_density():
     
 
 def message_failed(msg, intended_dest):
-    #print msg, intended_dest
-    #print successor, predecessor
-    globals.polite_print("!!There was some sort of networking issue. Don't Panic!!")
+    print msg, intended_dest
+    print successor, predecessor
     for i in reversed(range(0,161)):
         if not fingerTable[i] is None:
             if fingerTable[i] == intended_dest:
@@ -400,6 +399,7 @@ def message_failed(msg, intended_dest):
     send_message(msg,None)
 
 def peer_polite_exit(leaveing_node):
+    print "peer leaving"
     for i in range(0,160)[::-1]:
         if fingerTable[i] == leaveing_node:
             if i == 1: #we lost our successor

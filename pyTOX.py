@@ -7,25 +7,21 @@ import simple_network
 import node
 import time
 import Queue
+import ChatService
 from threading import *
 import sys
-import chat_service
-import user
 
-from termcolor import colored
 
-from globals import *
 
 import json
 from urllib2 import urlopen
 
 local_mode=False
-userinfo=None
 
 def myIP():
     if not local_mode:
         myip = json.load(urlopen('http://httpbin.org/ip'))['origin']
-        polite_print("just got my ip: "+myip)
+        print "just got my ip:", myip
         return myip
     else:
         return "127.0.0.1"
@@ -36,6 +32,7 @@ def myIP():
 # to router which would then be instantiated in main()
 services = {}
 commands = {}
+myhashkey = None
 
 def add_service(service_object):
     s_name = service_object.service_id
@@ -50,50 +47,80 @@ def attach_services():
                 commands[c] = services[s_name]
 
 def setup_Node(addr="localhost", port=None):
+    global myhashkey
     node.IPAddr = addr
     node.ctrlPort = port
-    node.thisNode = node.Node_Info(node.IPAddr, node.ctrlPort)
+    chat = ChatService.ChatService()
+    node.thisNode = node.Node_Info(node.IPAddr, node.ctrlPort, myhashkey)
     #node.net_server = dummy_network.start(node.thisNode, node.handle_message)
     node.net_server = simple_network.NETWORK_SERVICE("", node.ctrlPort)
     #### setup services here
-    #database_name = str(node.thisNode.key)+".db"
+    database_name = str(node.thisNode.key)+".db"
+    #add_service(db.Shelver(database_name))
     add_service(service.Internal_Service())
-    add_service(service.ECHO_service())
-    add_service(chat_service.ChatService())
+    
+    add_service(chat)
+    myhashkey = chat.myinfo.hashid
+    #add_service(service.ECHO_service())
+    #add_service(Topology_Service.Topology())
+    #add_service(filesystem_service.FileSystem())
+    #add_service(map_reduce.Map_Reduce_Service())
     ####
     attach_services()
 
 
-def join_ring(node_name, node_port, other_key):
+def join_ring(node_name, node_port):
     othernode = node.Node_Info(node_name, node_port)
-    othernode.key = hash_util.Key(other_key)
     node.join(othernode)
 
 def no_join():
     node.create()
 
-def console():##need to re-write into something CURSE-y
+def console():
     cmd = "-"
-    state = "command" #state can also be chat
-    command_dict = {}
-    running = True
-    while(running):
-        print "["+colored("COMMAND:","blue")+"]:",
-        user_input = raw_input()
-        if user_input == "exit" or user_input == "quit":
-            break
+    loaded_script = Queue.Queue()
+    try:
+        if loaded_script.empty():
+            cmd = raw_input()
+        else:
+            cmd = loaded_script.get()
+            loaded_script.task_done()
+    except EOFError: #the user does not have a terminal
+        pass
+    while not ( cmd == "q" or cmd == "Q"):
+        command, args = None, None
+        splitted = cmd.split(' ',1)
+        if len(splitted) >= 1:
+            command = splitted[0]
+        if len(splitted) == 2:
+            args = splitted[1]
+        if command in commands.keys():
+            mytarget = lambda: commands[command].handle_command(command, args)
+            t = Thread(target=mytarget)
+            t.daemon = True
+            t.start()
+        elif command == "run":
+            file2open = file(args,"r")
+            for l in file2open:
+                loaded_script.put(l)
+            file2open.close()
+        elif command == "stat":
+            input_size = node.todo.qsize();
+            print "backlog: "+str(input_size)
+        else:
+            print "successor  ", node.successor
+            print "predecessor", node.predecessor
         try:
-            mycommand, args = user_input.split(" ",1)
-            print mycommand, args, services, commands
-        except ValueError:
-            mycommand = user_input
-            args = ""
-        if mycommand == "send":
-            services["CHAT"].handle_command(mycommand, args)
-        elif mycommand == "fingers":
-            services[SERVICE_INTERNAL].handle_command(mycommand, args)
-
-
+            if loaded_script.empty():
+                cmd = raw_input()
+            else:
+                cmd = loaded_script.get()
+                loaded_script.task_done()
+        except EOFError: #the user does not have a terminal
+            print "I do not see a terminal!"
+            time.sleep(1)
+            pass
+    node.net_server.stop()
 
 def main():
     myip = myIP()
@@ -103,18 +130,17 @@ def main():
         local_port = int(args[1]) 
     else: 
         local_port = random.randint(9000, 9999)
- 
+        
+    other_IP = args[2] if len(args) > 2 else None
+    other_port = int(args[3]) if len(args) > 3 else None
+
     setup_Node(addr=myip,port=local_port)
-    otherStr = args[2] if len(args) > 2 else None
-    if not otherStr is None:
-        other_IP, other_port, other_key = otherStr.split(":",2)
-        join_ring(other_IP, other_port, other_key)
-        print other_IP, other_port, other_key
+    if not other_IP is None and not other_port is None:
+        join_ring(other_IP, other_port)
     else:
         no_join()
     node.startup()
     console()
-
 
 if __name__ == "__main__":
     main()
