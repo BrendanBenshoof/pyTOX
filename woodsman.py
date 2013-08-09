@@ -1,5 +1,7 @@
 #simple polite_logging library
-import readline, sys
+import readline
+
+import sys
 from threading import Lock
 
 print_logs = False
@@ -29,7 +31,8 @@ def logPrint(*astr):
         f.close()
         log_lock.release()
 
-def polite_print(astr):
+def polite_print(*astr):
+    astr = concat(astr)
     sys.stdout.write('\r'+' '*(len(readline.get_line_buffer())+2)+'\r')
     print astr
     sys.stdout.write('> ' + readline.get_line_buffer())

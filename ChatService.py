@@ -4,6 +4,7 @@ import message
 import hash_util
 import random
 import rsa
+from woodsman import polite_print
 
 
 from pyDes import *
@@ -52,7 +53,7 @@ class UserInfo(object):
     @classmethod
     def from_secret(cls, string):
         parts = string.split(":")
-        print parts
+        #print parts
         if len(parts) < 3:
             return None
         handle = parts[0]
@@ -125,34 +126,37 @@ class ChatService(service.Service):
         self.service_id = CHAT_SERVICE
 
         try:
-            print "loading config!"
-            file_load = load_preferences("userinfo/data.txt",password=None)
+            polite_print( "loading config!")
+            file_load = load_preferences("userinfo/data.txt")
             self.myinfo = file_load[0]
             if len(file_load) > 1:
                 self.friends = file_load[1:]
         except IOError:
-            print "I did not find a config file."
-            print "I am generating a new user and config file."
-            print "please enter a password:"
-            newpass = raw_input()
-            print "ok, making a new user:"
-            print "enter your desired handle:"
+            polite_print( "I did not find a config file.")
+            polite_print( "I am generating a new user and config file.")
+            polite_print( "enter your desired handle:")
             handle = raw_input()
             self.myinfo = UserInfo.generate_new(handle)
-            write_preferences("userinfo/data.txt",[self.myinfo],password=newpass)
-        print "you are logged in as:", self.myinfo.handle
+            write_preferences("userinfo/data.txt",[self.myinfo])
+        polite_print( "you are logged in as:", self.myinfo.handle)
 
     def handle_message(self, msg):
         #print "got", msg, msg.recipient
         to = UserInfo.from_secret(msg.recipient)
         #print to, to.hashid, self.myinfo.hashid
         if not hash_util.hash_equal(to.hashid,self.myinfo.hashid):
-            print "got somebody else's message"
+            polite_print("got somebody else's message")
             return
         else:
+            origin = UserInfo.from_secret(msg.sender)
+            local_origin = self.get_friend_from_hash(origin.hashid)
+            if local_origin is None:
+                polite_print("You got a message from a user outside your friend list")
+                return
             msg.desecure(self.myinfo)
             msg.decrypt()
-            print "{"+to.handle+"} "+msg.message
+            polite_print( "{"+local_origin.handle+"} "+msg.message)
+
         return True
 
     def get_friend(self,handle):
@@ -162,9 +166,15 @@ class ChatService(service.Service):
         print "Friend Not Found:", handle
         return None
 
+    def get_friend_from_hash(self,hashid):
+        for f in self.friends:
+            if hash_util.hash_equal(f.hashid, hashid):
+                return f
+        return None
+
     def attach_to_console(self):
         ### return a list of command-strings
-        return ["send", "add", "who", "save"]
+        return ["send", "add", "who", "save", "rename"]
 
     def handle_command(self, comand_st, arg_str):
         ### one of your commands got typed in
@@ -179,7 +189,7 @@ class ChatService(service.Service):
             try:
                 msg = args[1]
             except:
-                print "you need a message"
+                polite_print("you need a message")
                 return
             newmsg = ChatMessage(self.owner, to.hashid, self.owner, self.myinfo.gen_secret(False), to.gen_secret(False), msg, to.sign(msg) )
             newmsg.encrypt()
@@ -189,46 +199,37 @@ class ChatService(service.Service):
             print self.myinfo.gen_secret(False)
         if comand_st == "save":
             mylist = [self.myinfo]+self.friends
-            write_preferences("userinfo/data.txt",[self.myinfo],password=None)
+            write_preferences("userinfo/data.txt",[self.myinfo])
+        if comand_st == "rename":
+            args = arg_str.split(" ")
+            old = args[0]
+            new = args[1]
+            f = self.get_friend(old)
+            if not f is None:
+                f.handle = new
+                polite_print(old+" has been renamed "+new)
         pass
 
 
     def add_friend(self,instr):
         self.friends.append(UserInfo.from_secret(instr))
 
-def load_preferences(fileloc, password=None):
-    if password is None:
-        print "Enter contacts file password:"
-        password = raw_input()
+def load_preferences(fileloc):
     output = []
     with open(fileloc,'rb') as pref_file:
-        contents = pref_file.read()
-    print "in length", len(contents)
-
-    passkey_int = int(hash_util.hash_str(password).key,16)
-    passkey_des = ChatMessage.decode_DES_key(passkey_int)
-    d = triple_des(passkey_des, padmode=PAD_PKCS5)
-    contents = d.decrypt(contents)
-    lines = contents.split("\n")[:-1] 
-    for l in lines:
-        output.append(UserInfo.from_secret(l))
+        for l in pref_file:
+            output.append(UserInfo.from_secret(l))
+        print output
     return output
 
 def write_preferences(fileloc, userlist, password=None):
-    if password is None:
-        print "Enter contacts file password:"
-        password = raw_input()
-    pref_file = file(fileloc,"wb+")
+    pref_file = file(fileloc,"w+")
     outstr = ""
     for u in userlist:
         outstr+=u.gen_secret(True)+"\n"
-    passkey_int = int(hash_util.hash_str(password).key,16)
-    passkey_des = ChatMessage.decode_DES_key(passkey_int)
-    d = triple_des(passkey_des, padmode=PAD_PKCS5)
-    contents = d.encrypt(outstr)
     with open(fileloc,'w+') as pref_file:
-        pref_file.write(contents)
-    print "outlength", len(contents)
+        pref_file.write(outstr)
+    #print "outlength", len(contents)
 
 #test = UserInfo.generate_new("Test")
 #c = ChatMessage(None, None, None, None, None, None, None)
