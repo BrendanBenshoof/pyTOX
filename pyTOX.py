@@ -51,16 +51,17 @@ def setup_Node(addr="localhost", port=None):
     node.IPAddr = addr
     node.ctrlPort = port
     chat = ChatService.ChatService()
+    myhashkey = chat.myinfo.hashid
     node.thisNode = node.Node_Info(node.IPAddr, node.ctrlPort, myhashkey)
     #node.net_server = dummy_network.start(node.thisNode, node.handle_message)
     node.net_server = simple_network.NETWORK_SERVICE("", node.ctrlPort)
     #### setup services here
-    database_name = str(node.thisNode.key)+".db"
+    #database_name = str(node.thisNode.key)+".db"
     #add_service(db.Shelver(database_name))
     add_service(service.Internal_Service())
     
     add_service(chat)
-    myhashkey = chat.myinfo.hashid
+
     #add_service(service.ECHO_service())
     #add_service(Topology_Service.Topology())
     #add_service(filesystem_service.FileSystem())

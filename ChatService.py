@@ -31,15 +31,14 @@ class UserInfo(object):
 
     def sign(self, msg):
         hash_to_sign = hash_util.hash_str(msg).key
-        d = triple_des(self.key, padmode=PAD_PKCS5)
-        return d.encrypt(hash_to_sign)
+        return rsa.encrypt(hash_to_sign, self.publickey)
 
     def validate(self, msg, signature):
         return signature == self.sign(msg)
 
     @classmethod
     def generate_new(cls, handle):
-        (pubkey, privkey) = rsa.newkeys(512)
+        (pubkey, privkey) = rsa.newkeys(1024)
         pubkey_str = hex(pubkey.n)[:-1]+"?"+hex(pubkey.e)[:-1]
         myhash = hash_util.hash_str(pubkey_str)
         return UserInfo(handle,myhash,pubkey,privkey)
@@ -53,8 +52,8 @@ class UserInfo(object):
     @classmethod
     def from_secret(cls, string):
         parts = string.split(":")
-        #print parts
-        if len(parts) <= 3:
+        print parts
+        if len(parts) < 3:
             return None
         handle = parts[0]
         hashid = hash_util.Key(parts[1])
@@ -75,7 +74,7 @@ class UserInfo(object):
 
 class ChatMessage(message.Message):
     def __init__(self, origin_node, destination_key, requester, sender, recipient, message, signature):
-        super(ChatMessage,self).__init__(self, CHAT_SERVICE, "MSG")
+        super(ChatMessage,self).__init__(CHAT_SERVICE, CHAT_SERVICE)
         self.origin_node = origin_node  # node that just sent this message
         self.destination_key = destination_key  # the key we're trying to find the node responsible for
         self.reply_to = requester
@@ -84,7 +83,6 @@ class ChatMessage(message.Message):
         self.DESKEY = ChatMessage.decode_DES_key(random.randint(0,2**(8*24)))
         self.message = message
         self.signature = signature
-
     @classmethod
     def decode_DES_key(cls,keyInt):
         results = []
@@ -92,7 +90,30 @@ class ChatMessage(message.Message):
             results.append(chr(keyInt%256))
             keyInt/=256
         return results
+    @classmethod
+    def encode_DES_key(cls,keylist):
+        results = 0L
+        c = 0
+        for i in keylist:
+            results+=ord(i)<<(8*c)
+            c+=1
+        return results
 
+
+    def encrypt(self):
+        d = triple_des(self.DESKEY)
+        self.message = d.encrypt(self.message, padmode=PAD_PKCS5)
+
+    def decrypt(self):
+        #return rsa.decrypt(msg, self.privatekey)
+        d = triple_des(self.DESKEY, padmode=PAD_PKCS5)
+        self.message = d.decrypt(self.message)
+
+    def secure(self, dest):
+        self.DESKEY = dest.encrypt(str(ChatMessage.encode_DES_key(self.DESKEY)))
+
+    def desecure(self, dest):
+        self.DESKEY = ChatMessage.decode_DES_key(int(dest.decrypt(self.DESKEY)))
 message.register(ChatMessage)
 
 class ChatService(service.Service):
@@ -101,11 +122,11 @@ class ChatService(service.Service):
         self.myinfo = None
         self.friends = []
         self.context = None
-        print "Enter contacts file password:"
-        mypass = raw_input()
+        self.service_id = CHAT_SERVICE
+
         try:
             print "loading config!"
-            file_load = load_preferences("userinfo/data.txt",password=mypass)
+            file_load = load_preferences("userinfo/data.txt",password=None)
             self.myinfo = file_load[0]
             if len(file_load) > 1:
                 self.friends = file_load[1:]
@@ -119,22 +140,66 @@ class ChatService(service.Service):
             handle = raw_input()
             self.myinfo = UserInfo.generate_new(handle)
             write_preferences("userinfo/data.txt",[self.myinfo],password=newpass)
+        print "you are logged in as:", self.myinfo.handle
 
     def handle_message(self, msg):
+        #print "got", msg, msg.recipient
+        to = UserInfo.from_secret(msg.recipient)
+        #print to, to.hashid, self.myinfo.hashid
+        if not hash_util.hash_equal(to.hashid,self.myinfo.hashid):
+            print "got somebody else's message"
+            return
+        else:
+            msg.desecure(self.myinfo)
+            msg.decrypt()
+            print "{"+to.handle+"} "+msg.message
         return True
+
+    def get_friend(self,handle):
+        for f in self.friends:
+            if f.handle == handle:
+                return f
+        print "Friend Not Found:", handle
+        return None
 
     def attach_to_console(self):
         ### return a list of command-strings
-        return ["send", "add"]
+        return ["send", "add", "who", "save"]
 
     def handle_command(self, comand_st, arg_str):
         ### one of your commands got typed in
+        if comand_st == "add": 
+            self.add_friend(arg_str)
+        if comand_st == "send":
+            args = arg_str.split(" ",1)
+            to_str = args[0]
+            to = self.get_friend(to_str)
+            if to is None:
+                return
+            try:
+                msg = args[1]
+            except:
+                print "you need a message"
+                return
+            newmsg = ChatMessage(self.owner, to.hashid, self.owner, self.myinfo.gen_secret(False), to.gen_secret(False), msg, to.sign(msg) )
+            newmsg.encrypt()
+            newmsg.secure(to)
+            self.send_message(newmsg, None)
+        if comand_st == "who":
+            print self.myinfo.gen_secret(False)
+        if comand_st == "save":
+            mylist = [self.myinfo]+self.friends
+            write_preferences("userinfo/data.txt",[self.myinfo],password=None)
         pass
 
-    def add_friend(self,instr):
-        self.friends.append(UserInfo)
 
-def load_preferences(fileloc, password="None"):
+    def add_friend(self,instr):
+        self.friends.append(UserInfo.from_secret(instr))
+
+def load_preferences(fileloc, password=None):
+    if password is None:
+        print "Enter contacts file password:"
+        password = raw_input()
     output = []
     with open(fileloc,'rb') as pref_file:
         contents = pref_file.read()
@@ -149,7 +214,10 @@ def load_preferences(fileloc, password="None"):
         output.append(UserInfo.from_secret(l))
     return output
 
-def write_preferences(fileloc, userlist, password="None"):
+def write_preferences(fileloc, userlist, password=None):
+    if password is None:
+        print "Enter contacts file password:"
+        password = raw_input()
     pref_file = file(fileloc,"wb+")
     outstr = ""
     for u in userlist:

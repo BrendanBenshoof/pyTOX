@@ -21,15 +21,13 @@ def register(cls):
 
 
 class Message(object):
-    def __init__(self, service, type, success_callback_msg = None, failed_callback_msg = None):
+    def __init__(self, service, type):
         self.origin_node = None     # One hop origin
         self.destination_key = generate_random_key()    # 160 number or hash object
         self.reply_to = None        # Node to reply to
         self.contents = {}          # All other data
         self.service = service      # What service handles this
         self.type = type
-        self.success_callback_msg = success_callback_msg
-        self.failed_callback_msg = failed_callback_msg
         self.finger = None          # int -1 to 160
         self.priority = 10 #default to lowest
 
