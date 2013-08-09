@@ -1,5 +1,8 @@
 #simple polite_logging library
-import readline
+try:
+    import myreadline as readline
+except ImportError:
+    import readline
 
 import sys
 from threading import Lock
