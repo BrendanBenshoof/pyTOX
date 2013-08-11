@@ -35,11 +35,12 @@ def logPrint(*astr):
         log_lock.release()
 
 def polite_print(*astr):
+    #print astr
     astr = concat(astr)
-    sys.stdout.write('\r'+' '*(len(readline.get_line_buffer())+2)+'\r')
+    #sys.stdout.write('\r'+' '*(len(readline.get_line_buffer())+2)+'\r')
     print astr
-    sys.stdout.write('> ' + readline.get_line_buffer())
-    sys.stdout.flush()
+    #sys.stdout.write('> ' + readline.get_line_buffer())
+    #sys.stdout.flush()
 
 def concat(astr):
     output = ""

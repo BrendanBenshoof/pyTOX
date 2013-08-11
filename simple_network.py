@@ -107,33 +107,13 @@ class NETWORK_SERVICE(object):
         DATA = msg.serialize()
         ##print len(DATA)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(1.0)
-        length = len(DATA)
-        padding = CHUNKSIZE-length%CHUNKSIZE
-        DATA+=" "*padding
-        length = len(DATA)/CHUNKSIZE
-        byte1 = length >> 8
-        byte2 = length % (2**8)
-        ###print byte1, byte2
-        b1 = chr(byte1)
-        b2 = chr(byte2)
-        ###print b1, b2, ord(b1), ord(b2)
-        #print "<",
+        sock.settimeout(2.0)
         try:
             # Connect to server and send data
             sock.connect((HOST, PORT))
-            sock.send(b1)
-            sock.send(b2)
-            ack = ""
-            while len(ack) < 1:
-                ack = sock.recv(1)
             sock.send(DATA)
-                
-            
-            # Receive data from the server and shut down
-            ack=""
-            while len(ack) < 1:
-                ack = sock.recv(1)
+            sock.shutdown(1)
+            ack = sock.recv(1)
         except socket.error:
             ##print e
             #sock.close()
@@ -164,33 +144,13 @@ class MyTCPHandler(BaseRequestHandler):
 
     def handle(self):
         # self.request is the TCP socket connected to the client
-        b1 = ""
-        b2 = ""
-        #print "[",
-        while len(b1) == 0:
-            b1 = self.request.recv(1)
-        while len(b2) == 0:
-            b2 = self.request.recv(1)
-        #print b1, b2
-        b1 = ord(b1)
-        b2 = ord(b2)
-        length = ((b1 << 8) + b2)*CHUNKSIZE
-        maxlength = length/CHUNKSIZE
-        self.request.send("0")
         data = ""
-        data0=""
-        while length > 0:
+        data0="0"
+        while len(data0) > 0:
             ###print length
-            buff = CHUNKSIZE
-            if length < CHUNKSIZE:
-                buff =length
-            data0 = self.request.recv(buff)
-            length-=len(data0)
+            data0 = self.request.recv(1024)
             data+=data0
         self.request.send("0")
-        old_length = len(data)
-        data = data.rstrip(" ")
-        ##print "incoming length: " +str(len(data))
         msg = message.Message.deserialize(data)
         #print "]",
         node.handle_message(msg)
