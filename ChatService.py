@@ -4,7 +4,7 @@ import message
 import hash_util
 import random
 import rsa
-from woodsman import polite_print
+
 
 
 from pyDes import *
@@ -126,36 +126,36 @@ class ChatService(service.Service):
         self.service_id = CHAT_SERVICE
 
         try:
-            polite_print( "loading config!")
+            print( "loading config!")
             file_load = load_preferences("userinfo/data.txt")
             self.myinfo = file_load[0]
             if len(file_load) > 1:
                 self.friends = file_load[1:]
         except IOError:
-            polite_print( "I did not find a config file.")
-            polite_print( "I am generating a new user and config file.")
-            polite_print( "enter your desired handle:")
+            print( "I did not find a config file.")
+            print( "I am generating a new user and config file.")
+            print( "enter your desired handle:")
             handle = raw_input()
             self.myinfo = UserInfo.generate_new(handle)
             write_preferences("userinfo/data.txt",[self.myinfo])
-        polite_print( "you are logged in as:", self.myinfo.handle)
+        print( "you are logged in as:", self.myinfo.handle)
 
     def handle_message(self, msg):
         #print "got", msg, msg.recipient
         to = UserInfo.from_secret(msg.recipient)
         #print to, to.hashid, self.myinfo.hashid
         if not hash_util.hash_equal(to.hashid,self.myinfo.hashid):
-            polite_print("got somebody else's message")
+            print("got somebody else's message")
             return
         else:
             origin = UserInfo.from_secret(msg.sender)
             local_origin = self.get_friend_from_hash(origin.hashid)
             if local_origin is None:
-                polite_print("You got a message from a user outside your friend list")
+                print("You got a message from a user outside your friend list")
                 return
             msg.desecure(self.myinfo)
             msg.decrypt()
-            polite_print( "{"+local_origin.handle+"} "+msg.message)
+            print( "{"+local_origin.handle+"} "+msg.message)
 
         return True
 
@@ -189,18 +189,18 @@ class ChatService(service.Service):
             try:
                 msg = args[1]
             except:
-                polite_print("you need a message")
+                print("you need a message")
                 return
             newmsg = ChatMessage(self.owner, to.hashid, self.owner, self.myinfo.gen_secret(False), to.gen_secret(False), msg, to.sign(msg) )
             newmsg.encrypt()
             newmsg.secure(to)
             self.send_message(newmsg, None)
         if comand_st == "whoami":
-            polite_print( self.myinfo.gen_secret(False))
+            print( self.myinfo.gen_secret(False))
         if comand_st == "who":
-            polite_print("Your friends are:")
+            print("Your friends are:")
             for f in self.friends:
-                polite_print(f.handle)
+                print(f.handle)
         if comand_st == "save":
             mylist = [self.myinfo]+self.friends
             write_preferences("userinfo/data.txt",[self.myinfo])
@@ -211,8 +211,8 @@ class ChatService(service.Service):
             f = self.get_friend(old)
             if not f is None:
                 f.handle = new
-                polite_print(old+" has been renamed "+new)
-        pass
+                print(old+" has been renamed "+new)
+
 
 
     def add_friend(self,instr):

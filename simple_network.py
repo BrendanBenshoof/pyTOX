@@ -150,7 +150,10 @@ class MyTCPHandler(BaseRequestHandler):
             ###print length
             data0 = self.request.recv(1024)
             data+=data0
-        self.request.send("0")
+        self.request.send("ack")
+        #self.request.shutdown()
+        self.request.close()
+
         msg = message.Message.deserialize(data)
         #print "]",
         node.handle_message(msg)
