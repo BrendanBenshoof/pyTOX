@@ -174,7 +174,7 @@ class ChatService(service.Service):
 
     def attach_to_console(self):
         ### return a list of command-strings
-        return ["send", "add", "who", "save", "rename"]
+        return ["send", "add", "who","whoami", "save", "rename", "ping"]
 
     def handle_command(self, comand_st, arg_str):
         ### one of your commands got typed in
@@ -195,8 +195,12 @@ class ChatService(service.Service):
             newmsg.encrypt()
             newmsg.secure(to)
             self.send_message(newmsg, None)
+        if comand_st == "whoami":
+            polite_print( self.myinfo.gen_secret(False))
         if comand_st == "who":
-            print self.myinfo.gen_secret(False)
+            polite_print("Your friends are:")
+            for f in self.friends:
+                polite_print(f.handle)
         if comand_st == "save":
             mylist = [self.myinfo]+self.friends
             write_preferences("userinfo/data.txt",[self.myinfo])
