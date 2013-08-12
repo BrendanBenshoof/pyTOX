@@ -26,7 +26,7 @@ import Queue
 TEST_MODE = False   #duh
 VERBOSE = False      # True for various debug messages, False for a more silent execution.
 net_server = None
-MAINTENANCE_PERIOD = 2.0
+MAINTENANCE_PERIOD = 0.2
 
 class Node_Info():
     """This is struct containing the info of other nodes.  
@@ -60,7 +60,7 @@ class Node_Info():
 
     def  __hash__(self):
         return int(self.key.key,16)
-register(Node_Info)
+
 
 """This class represents the current node in the Chord Network.
 We try to follow Stoica et al's scheme as closely as possible here,
@@ -178,7 +178,7 @@ def kickstart():
         begin_stabilize()
         check_predecessor()        
         time.sleep(MAINTENANCE_PERIOD)
-        fix_fingers(10)
+        fix_fingers(1)
 
 ##END CLEANUP
 
@@ -206,9 +206,8 @@ def stabilize(message):
     x = message.get_content("predecessor")
     if x!=None and hash_between(x.key, thisNode.key, successor.key):
         update_finger(x,1)
-    send_message(Notify_Message(thisNode, successor.key))
+    send_message(Notify_Message(thisNode, successor.key), successor)  #Andrew added second field on 8-11, checking to see if this resolves our issue. 
     
-            
 
 # TODO: Call this function
 # we couldn't reach our successor;
@@ -258,7 +257,7 @@ def fix_fingers(n=1):
                 print "Fix Fingers + " + str(next_finger)
             target_key = add_keys(thisNode.key, generate_key_with_index(next_finger-1))
             message = Find_Successor_Message(thisNode, target_key, thisNode, next_finger)
-            send_message(message)
+            send_message(message, None)
 
 def update_finger(newNode,finger):
     global fingerTable
@@ -285,7 +284,7 @@ def update_finger(newNode,finger):
 
 # ping our predecessor.  pred = nil if no response
 def check_predecessor():
-    if(predecessor != None):  # do this here or before it's called
+    if(predecessor != None or not hash_equal(predecessor.key, thisNode.key)):  # do this here or before it's called
         send_message(Check_Predecessor_Message(thisNode, predecessor.key),predecessor)
    
 #politely leave the network 
@@ -306,7 +305,7 @@ def add_service(service):
         print "Service " + service.service_id + "attached" 
 
 
-def send_message(msg, destination=None):
+def send_message(msg, destination):
     #TODO: write something to actually test this
     if destination == None:
         destination = find_ideal_forward(msg.destination_key)

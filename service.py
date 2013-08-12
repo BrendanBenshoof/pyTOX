@@ -40,7 +40,7 @@ class Service(object):
         ### one of your commands got typed in
         return None
 
-    def send_message(self, msg, dest=None):
+    def send_message(self, msg, dest):
         msg.priority=self.priority
         self.callback(msg, dest)
 

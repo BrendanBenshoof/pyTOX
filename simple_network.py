@@ -118,6 +118,7 @@ class NETWORK_SERVICE(object):
             ##print e
             #sock.close()
             print "SOCKET ERROR"
+            print "Tried to send to ", HOST, ":",PORT
             node.message_failed(msg,dest)
             #self.update_messages_in_queue(dest)
         finally:
