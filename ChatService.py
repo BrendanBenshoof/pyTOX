@@ -164,10 +164,11 @@ class ChatService(service.Service):
                 to = UserInfo.from_secret(msg.sender)
                 pid = msg.message
                 if pid in self.open_pings.keys():
-                    now = time.mktime(time.gmtime())
+                    now = time.time()
                     delta = now - self.open_pings[pid]
-                    print self.get_friend_from_hash(to.hashid).handle, "has a ping time of", delta
+                    print self.get_friend_from_hash(to.hashid).handle, "is online", delta
                 else:
+                    print to.handle, "is online and has pinged you"
                     newmsg = ChatMessage(self.owner, to.hashid, self.owner, self.myinfo.gen_secret(False), to.gen_secret(False), pid, to.sign(pid) )
                     newmsg.type = "PING"
                     newmsg.encrypt()
@@ -218,6 +219,8 @@ class ChatService(service.Service):
             print("Your friends are:")
             for f in self.friends:
                 print(f.handle)
+            for f in self.friends:
+                self.ping(f.handle)
         if comand_st == "save":
             mylist = [self.myinfo]+self.friends
             write_preferences("userinfo/data.txt",mylist)
@@ -231,17 +234,19 @@ class ChatService(service.Service):
                 print(old+" has been renamed "+new)
         if comand_st == "ping":
             user = arg_str
-            to = self.get_friend(user)
-            msg = str(random.randint(0,2**20))
-            if not to is None:
-                newmsg = ChatMessage(self.owner, to.hashid, self.owner, self.myinfo.gen_secret(False), to.gen_secret(False), msg, to.sign(msg) )
-                newmsg.type = "PING"
-                newmsg.encrypt()
-                newmsg.secure(to)
-                self.open_pings[msg] = time.mktime(time.gmtime())
-                self.send_message(newmsg, None)
+            self.ping(user)
 
 
+    def ping(self, user):
+        to = self.get_friend(user)
+        msg = str(random.randint(0,2**20))
+        if not to is None:
+            newmsg = ChatMessage(self.owner, to.hashid, self.owner, self.myinfo.gen_secret(False), to.gen_secret(False), msg, to.sign(msg) )
+            newmsg.type = "PING"
+            newmsg.encrypt()
+            newmsg.secure(to)
+            self.open_pings[msg] = time.time()
+            self.send_message(newmsg, None)
 
     def add_friend(self,instr):
         self.friends.append(UserInfo.from_secret(instr))
