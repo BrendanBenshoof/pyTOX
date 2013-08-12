@@ -20,6 +20,7 @@ from message import *
 #import dummy_network as
 import globals
 import Queue
+import cerealizer
 
 
 # Debug variables
@@ -61,6 +62,7 @@ class Node_Info():
     def  __hash__(self):
         return int(self.key.key,16)
 
+cerealizer.register(Node_Info)
 
 """This class represents the current node in the Chord Network.
 We try to follow Stoica et al's scheme as closely as possible here,
