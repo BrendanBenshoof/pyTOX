@@ -4,7 +4,7 @@ import message
 import hash_util
 import random
 import rsa
-
+import time
 
 
 from pyDes import *
@@ -72,7 +72,7 @@ class UserInfo(object):
             return self.handle+":"+str(self.hashid.key)+":"+self.pub_key_str()+":"+self.private_key_str()
         else:
             return self.handle+":"+str(self.hashid.key)+":"+self.pub_key_str()
-
+time.mktime(time.gmtime())
 class ChatMessage(message.Message):
     def __init__(self, origin_node, destination_key, requester, sender, recipient, message, signature):
         super(ChatMessage,self).__init__(CHAT_SERVICE, CHAT_SERVICE)
@@ -124,6 +124,7 @@ class ChatService(service.Service):
         self.friends = []
         self.context = None
         self.service_id = CHAT_SERVICE
+        self.open_pings = {}
 
         try:
             print( "loading config!")
@@ -148,14 +149,30 @@ class ChatService(service.Service):
             print("got somebody else's message")
             return
         else:
-            origin = UserInfo.from_secret(msg.sender)
-            local_origin = self.get_friend_from_hash(origin.hashid)
-            if local_origin is None:
-                print("You got a message from a user outside your friend list")
-                return
-            msg.desecure(self.myinfo)
-            msg.decrypt()
-            print( "{"+local_origin.handle+"} "+msg.message)
+            if msg.type == "CHAT":
+                origin = UserInfo.from_secret(msg.sender)
+                local_origin = self.get_friend_from_hash(origin.hashid)
+                if local_origin is None:
+                    print("You got a message from a user outside your friend list")
+                    return
+                msg.desecure(self.myinfo)
+                msg.decrypt()
+                print( "{"+local_origin.handle+"} "+msg.message)
+            elif msg.type == "PING":
+                msg.desecure(self.myinfo)
+                msg.decrypt()
+                to = UserInfo.from_secret(msg.sender)
+                pid = msg.message
+                if pid in self.open_pings.keys():
+                    now = time.mktime(time.gmtime())
+                    delta = now - self.open_pings[pid]
+                    print self.get_friend_from_hash(to.hashid).handle, "has a ping time of", delta
+                else:
+                    newmsg = ChatMessage(self.owner, to.hashid, self.owner, self.myinfo.gen_secret(False), to.gen_secret(False), pid, to.sign(pid) )
+                    newmsg.type = "PING"
+                    newmsg.encrypt()
+                    newmsg.secure(to)
+                    self.send_message(newmsg,None)
 
         return True
 
@@ -203,7 +220,7 @@ class ChatService(service.Service):
                 print(f.handle)
         if comand_st == "save":
             mylist = [self.myinfo]+self.friends
-            write_preferences("userinfo/data.txt",[self.myinfo])
+            write_preferences("userinfo/data.txt",mylist)
         if comand_st == "rename":
             args = arg_str.split(" ")
             old = args[0]
@@ -212,6 +229,17 @@ class ChatService(service.Service):
             if not f is None:
                 f.handle = new
                 print(old+" has been renamed "+new)
+        if comand_st == "ping":
+            user = arg_str
+            to = self.get_friend(user)
+            msg = str(random.randint(0,2**20))
+            if not to is None:
+                newmsg = ChatMessage(self.owner, to.hashid, self.owner, self.myinfo.gen_secret(False), to.gen_secret(False), msg, to.sign(msg) )
+                newmsg.type = "PING"
+                newmsg.encrypt()
+                newmsg.secure(to)
+                self.open_pings[msg] = time.mktime(time.gmtime())
+                self.send_message(newmsg, None)
 
 
 
