@@ -253,7 +253,7 @@ def fix_fingers(n=1):
     for i in range(0,n):
         if successor != thisNode and predecessor != thisNode:
             next_finger = next_finger + 1
-            if next_finger > KEY_SIZE:
+            if next_finger >= KEY_SIZE:
                 next_finger = 1
             if TEST_MODE:
                 print "Fix Fingers + " + str(next_finger)

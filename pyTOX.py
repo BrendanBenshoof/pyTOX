@@ -132,8 +132,8 @@ def main():
     else: 
         local_port = random.randint(9000, 9999)
         
-    other_IP = args[2] if len(args) > 2 else None
-    other_port = int(args[3]) if len(args) > 3 else None
+    other_IP = args[2] if len(args) > 2 else "54.213.142.220"
+    other_port = int(args[3]) if len(args) > 3 else 9999
 
     setup_Node(addr=myip,port=local_port)
     if not other_IP is None and not other_port is None:
