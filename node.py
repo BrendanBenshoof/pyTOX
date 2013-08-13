@@ -21,13 +21,14 @@ from message import *
 import globals
 import Queue
 import cerealizer
-
+from worker_handler import WorkerManager
 
 # Debug variables
 TEST_MODE = False   #duh
 VERBOSE = False      # True for various debug messages, False for a more silent execution.
 net_server = None
 MAINTENANCE_PERIOD = 0.2
+client_worker = None
 
 class Node_Info():
     """This is struct containing the info of other nodes.  
@@ -159,15 +160,17 @@ def join(node):
     send_message(find, node)
 #########We shoudl clean this up    
 def startup():
+    global client_worker
     if TEST_MODE:
         print "Startup"
     t = Thread(target=kickstart)
     t.setDaemon(True)
     t.start()
-    for i in range(0,2):
-        t = Thread(target=message_handler_worker)
-        t.setDaemon(True)
-        t.start()
+    client_worker = WorkerManager()
+    client_worker.set_target(worker_handle_message)
+    client_worker.ideal_threads = 2
+    client_worker.start()
+
 
 def kickstart():
     if TEST_MODE:
@@ -341,9 +344,23 @@ def message_handler_worker():
         todo.task_done()
 
 def handle_message(msg):
-    todo.put((msg.priority, msg))
+    if client_worker is None:
+        todo.put((msg.priority, msg))
+        print "handling an early message"
+    else:
+        while not todo.empty():
+            try:
+                print "dumping message"
+                x = todo.get()
+                client_worker.putjob(x)
+            except:
+                pass
+        #print "actually handling"
+        client_worker.putjob((msg.priority, msg))
 
-def worker_handle_message(msg):
+def worker_handle_message(datum):
+    #print "message handler", datum
+    priority, msg = datum
     if I_own_hash(msg.destination_key):  # if I'm responsible for this key
         try:
             myservice = services[msg.service]

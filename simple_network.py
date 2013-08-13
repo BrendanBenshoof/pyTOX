@@ -6,6 +6,7 @@ import node
 import message
 from Queue import *
 import time
+from worker_handler import WorkerManager
 
 CHUNKSIZE = 64
 
@@ -17,7 +18,7 @@ class ThreadPoolMixIn(ThreadingMixIn):
     numThreads = 10
     allow_reuse_address = True  # seems to fix socket.error on server restart
 
-    def serve_forever(self):
+    def serve_forever(self,msg):
         '''
         Handle one request at a time until doomsday.
         '''
@@ -60,15 +61,16 @@ class ThreadedServer(ThreadPoolMixIn, TCPServer):
 
 
 class NETWORK_SERVICE(object):
-    def sender_loop(self):
-            while True:
-                priority, dest, msg = self.tosend.get(True)
-                self.client_send(dest,msg)
-                self.tosend.task_done()
+    def sender_loop(self, x):
+        print "sender loop", x
+        priority, dest, msg = x
+        self.client_send(dest,msg)
+
 
     def send_message(self,msg,dest):
+        print "send message called"
         msg_pack = (msg.priority,dest,msg)
-        self.tosend.put(msg_pack,True)
+        self.server_worker.putjob(msg_pack)
         
 
     def __init__(self,HOST="localhost",PORT=9000):
@@ -77,16 +79,21 @@ class NETWORK_SERVICE(object):
         self.tosend = PriorityQueue()
         # Activate the server; this will keep running until you
         # interrupt the program with Ctrl-C
-        t = threading.Thread(target=self.server.serve_forever)
-        t.daemon = True
-        t.start()
-        for i in range(0,4):
-            t2 = t = threading.Thread(target=self.sender_loop)
-            t2.daemon = True
-            t2.start()
+        self.server_worker = WorkerManager()
+        self.server_worker.set_target(self.server.serve_forever)
+        self.server_worker.ideal_threads = 1
+        self.server_worker.start()
+        self.server_worker.putjob("go")
 
+        self.client_worker = WorkerManager()
+        self.client_worker.set_target(self.sender_loop)
+        self.client_worker.ideal_threads = 4
+        self.client_worker.start()
+        
     def stop(self):
         self.server.shutdown()
+        self.server_worker.stop()
+        self.client_worker.stop()
 
     def update_messages_in_queue(self, failed_node):
         hold = []
@@ -101,7 +108,7 @@ class NETWORK_SERVICE(object):
             self.tosend.put()
 
     def client_send(self, dest, msg):
-        #print msg.service, msg.type, str(dest)
+        print "sending", msg.service, msg.type, str(dest)
         HOST = dest.IPAddr
         PORT = dest.ctrlPort
         DATA = msg.serialize()
