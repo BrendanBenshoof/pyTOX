@@ -62,15 +62,15 @@ class ThreadedServer(ThreadPoolMixIn, TCPServer):
 
 class NETWORK_SERVICE(object):
     def sender_loop(self, x):
-        print "sender loop", x
+        #print "sender loop", x
         priority, dest, msg = x
         self.client_send(dest,msg)
 
 
     def send_message(self,msg,dest):
-        print "send message called"
+        #print "send message called"
         msg_pack = (msg.priority,dest,msg)
-        self.server_worker.putjob(msg_pack)
+        self.client_worker.putjob(msg_pack)
         
 
     def __init__(self,HOST="localhost",PORT=9000):
@@ -108,7 +108,7 @@ class NETWORK_SERVICE(object):
             self.tosend.put()
 
     def client_send(self, dest, msg):
-        print "sending", msg.service, msg.type, str(dest)
+        #print "sending", msg.service, msg.type, str(dest)
         HOST = dest.IPAddr
         PORT = dest.ctrlPort
         DATA = msg.serialize()
