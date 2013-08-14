@@ -123,7 +123,7 @@ class ChatMessage(message.Message):
             self.encrypted = True
             print "encrypting"
         else:
-            raise Error("Encrypting an already encrypted message")
+            raise Exception("Encrypting an already encrypted message")
 
     def decrypt(self):
         #return rsa.decrypt(msg, self.privatekey)
@@ -133,20 +133,24 @@ class ChatMessage(message.Message):
             self.encrypted = False
             print "decrypting"
         else:
-            raise Error("Decrypting an already decrypted message")
+            raise Exception("Decrypting an already decrypted message")
 
     def secure(self, dest):
-        if not self.secured:
+        if not self.secured and self.encrypted == True:
             self.DESKEY = dest.encrypt(str(ChatMessage.encode_DES_key(self.DESKEY)))
             self.secured = True
+        elif self.encrypted == False:
+            raise Exception("securing an unencrypted message")
         else:
-            raise Error("Re-securing a secure message message")
+            raise Exception("Re-securing a secure message message")
     def desecure(self, dest):
-        if self.secured:
+        if self.secured and self.encrypted == True:
             self.DESKEY = ChatMessage.decode_DES_key(int(dest.decrypt(self.DESKEY)))
             self.secured = False
+        elif self.encrypted == False:
+            raise Exception("descuring an unencrypted message")
         else:
-            raise Error("de-securing an unsecure message message")
+            raise Exception("de-securing an unsecure message message")
 
 message.register(ChatMessage)
 
