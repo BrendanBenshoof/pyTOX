@@ -8,20 +8,24 @@ class WorkerManager(object):
         self.target = None
         self.inbox = PriorityQueue()
         self.running = False
+        self.ishandler = True
 
     def set_target(self,t):
         self.target = t
 
     def threadloop(self):
-        print "threadloop started"
+        #print "threadloop started"
         while self.running:
-            try:
-                x = self.inbox.get(False)
-                #print "calling handler"
-                self.target(x)
-                self.inbox.task_done()
-            except Empty:
-                pass
+            if self.ishandler:
+                try:
+                    x = self.inbox.get(False)
+                    #print "calling handler"
+                    self.target(x)
+                    self.inbox.task_done()
+                except Empty:
+                    pass
+            else:
+                self.target()
 
     def start(self):
         self.running = True
@@ -39,6 +43,7 @@ class WorkerManager(object):
             if not t.isAlive():
                 del t
             self.start()
+
     def putjob(self, datum):
         if self.running:
             self.inbox.put(datum, True)

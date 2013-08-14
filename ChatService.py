@@ -5,13 +5,18 @@ import hash_util
 import random
 import rsa
 import time
-
-
+import hashlib
+from worker_handler import WorkerManager
 from pyDes import *
 
 
 CHAT_SERVICE = "CHAT"
 KEYSIZE = 24
+
+subscribed_channels = {"GENERAL": 0.0}
+
+
+
 
 class UserInfo(object):
     def __init__(self, handle, hashid, publickey, privatekey = None):
@@ -52,6 +57,8 @@ class UserInfo(object):
 
     @classmethod
     def from_secret(cls, string):
+        if string == "NONE":
+            return None
         parts = string.split(":")
         #print parts
         if len(parts) < 3:
@@ -72,7 +79,7 @@ class UserInfo(object):
             return self.handle+":"+str(self.hashid.key)+":"+self.pub_key_str()+":"+self.private_key_str()
         else:
             return self.handle+":"+str(self.hashid.key)+":"+self.pub_key_str()
-time.mktime(time.gmtime())
+
 class ChatMessage(message.Message):
     def __init__(self, origin_node, destination_key, requester, sender, recipient, message, signature):
         super(ChatMessage,self).__init__(CHAT_SERVICE, CHAT_SERVICE)
@@ -99,7 +106,13 @@ class ChatMessage(message.Message):
             results+=ord(i)<<(8*c)
             c+=1
         return results
-
+    @classmethod
+    def passwrd_to_3DES(cls, passwrd):
+        m = hashlib.md5()
+        m.update(passwrd)
+        result = m.digest()
+        keyint = cls.encode_DES_key(result)
+        return cls.decode_DES_key(keyint)
 
     def encrypt(self):
         d = triple_des(self.DESKEY)
@@ -117,6 +130,35 @@ class ChatMessage(message.Message):
         self.DESKEY = ChatMessage.decode_DES_key(int(dest.decrypt(self.DESKEY)))
 message.register(ChatMessage)
 
+class Channel(object):
+    def __init__(self, hashid):
+        self.hashid = hashid
+        self.record = []
+        self.killtime = 60*5 #messages older then 5 minutes get dropped
+
+    def get_messages(self, lastime):
+        #now =  time.time()
+        output = []
+        for r in self.record:
+            ptime, msg = r
+            #print ptime, lastime, now, ptime >=lastime
+            if ptime >= lastime:
+                output.append(msg)
+            #print output
+        return output
+
+    def put_message(self, msg):
+        now = time.time()
+        #print "putmsg", now, msg
+        self.record.append([now, msg])
+        for r in self.record:
+            ptime, msg = r
+            if ptime < now - self.killtime:
+                self.record.remove(r)
+                #print "killedmsg"
+
+
+
 class ChatService(service.Service):
     def __init__(self):
         super(ChatService, self).__init__()
@@ -125,6 +167,12 @@ class ChatService(service.Service):
         self.context = None
         self.service_id = CHAT_SERVICE
         self.open_pings = {}
+        self.channels = {}
+        self.channelsurfer = WorkerManager()
+        self.channelsurfer.ideal_threads = 1
+        self.channelsurfer.target = self.poll_channels
+        self.channelsurfer.ishandler = False
+        
 
         try:
             print( "loading config!")
@@ -141,39 +189,65 @@ class ChatService(service.Service):
             write_preferences("userinfo/data.txt",[self.myinfo])
         print( "you are logged in as:", self.myinfo.handle)
 
+    def get_channel_from_hashid(self, hid):
+        for c in subscribed_channels.keys():
+            if hash_util.hash_str(c) == hid:
+                return c
+        return None
+
     def handle_message(self, msg):
         #print "got", msg, msg.recipient
-        to = UserInfo.from_secret(msg.recipient)
+
         #print to, to.hashid, self.myinfo.hashid
+        if msg.type == "CPOLL":
+            self.handle_CPOLL(msg)
+            return True
+        if msg.type == "CRESP":
+            cname = self.get_channel_from_hashid(msg.get_content("CHANNEL"))
+            for m in msg.message:
+                #print m
+                ckey = ChatMessage.passwrd_to_3DES(cname)
+                chash = hash_util.hash_str(cname)
+                m.DESKEY = ChatMessage.passwrd_to_3DES(cname)
+                m.decrypt()
+                #cname = self.get_channel_from_hashid(chash)
+                print "["+cname+"]", m.message
+            subscribed_channels[cname] = msg.get_content("pollTime")
+            return True
+        if msg.type == "CPOST":
+            self.handle_CPOST(msg)
+            return True
+        to = UserInfo.from_secret(msg.recipient)
         if not hash_util.hash_equal(to.hashid,self.myinfo.hashid):
             print("got somebody else's message")
-            return
-        else:
-            if msg.type == "CHAT":
-                origin = UserInfo.from_secret(msg.sender)
-                local_origin = self.get_friend_from_hash(origin.hashid)
-                if local_origin is None:
-                    print("You got a message from a user outside your friend list")
-                    return
-                msg.desecure(self.myinfo)
-                msg.decrypt()
-                print( "{"+local_origin.handle+"} "+msg.message)
-            elif msg.type == "PING":
-                msg.desecure(self.myinfo)
-                msg.decrypt()
-                to = UserInfo.from_secret(msg.sender)
-                pid = msg.message
-                if pid in self.open_pings.keys():
-                    now = time.time()
-                    delta = now - self.open_pings[pid]
-                    print self.get_friend_from_hash(to.hashid).handle, "is online", delta
-                else:
-                    print to.handle, "is online and has pinged you"
-                    newmsg = ChatMessage(self.owner, to.hashid, self.owner, self.myinfo.gen_secret(False), to.gen_secret(False), pid, to.sign(pid) )
-                    newmsg.type = "PING"
-                    newmsg.encrypt()
-                    newmsg.secure(to)
-                    self.send_message(newmsg,None)
+            return True
+        if msg.type == "CHAT":
+            origin = UserInfo.from_secret(msg.sender)
+            local_origin = self.get_friend_from_hash(origin.hashid)
+            if local_origin is None:
+                print("You got a message from a user outside your friend list")
+                return
+            msg.desecure(self.myinfo)
+            msg.decrypt()
+            print( "{"+local_origin.handle+"} "+msg.message)
+            return True
+        if msg.type == "PING":
+            msg.desecure(self.myinfo)
+            msg.decrypt()
+            to = UserInfo.from_secret(msg.sender)
+            pid = msg.message
+            if pid in self.open_pings.keys():
+                now = time.time()
+                delta = now - self.open_pings[pid]
+                print self.get_friend_from_hash(to.hashid).handle, "is online", delta
+            else:
+                print to.handle, "is online and has pinged you"
+                newmsg = ChatMessage(self.owner, to.hashid, self.owner, self.myinfo.gen_secret(False), to.gen_secret(False), pid, to.sign(pid) )
+                newmsg.type = "PING"
+                newmsg.encrypt()
+                newmsg.secure(to)
+                self.send_message(newmsg,None)
+            return True
 
         return True
 
@@ -192,10 +266,26 @@ class ChatService(service.Service):
 
     def attach_to_console(self):
         ### return a list of command-strings
-        return ["send", "add", "who","whoami", "save", "rename", "ping"]
+        return ["send", "add", "who","whoami", "save", "rename", "ping", "listen","post"]
 
     def handle_command(self, comand_st, arg_str):
+        global subscribed_channels
+        if not self.channelsurfer.running:
+            self.channelsurfer.start()
         ### one of your commands got typed in
+        if comand_st == "listen":
+            chan = arg_str
+            subscribed_channels[chan] = 0.0
+        if comand_st == "post":
+            chan, msg = arg_str.split(" ",1)
+            ckey = ChatMessage.passwrd_to_3DES(chan)
+            chash = hash_util.hash_str(chan)
+            newmsg = ChatMessage(self.owner, chash, self.owner, self.myinfo.gen_secret(False), "NONE", msg, "NONE" )
+            newmsg.DESKEY = ChatMessage.passwrd_to_3DES(chan)
+            newmsg.type = "CPOST"         
+            newmsg.encrypt()
+            self.send_message(newmsg, None)
+
         if comand_st == "add": 
             self.add_friend(arg_str)
         if comand_st == "send":
@@ -251,6 +341,44 @@ class ChatService(service.Service):
     def add_friend(self,instr):
         self.friends.append(UserInfo.from_secret(instr))
 
+
+    def handle_CPOST(self, msg):
+        #print "got a post"
+        cid = msg.destination_key
+        if cid in self.channels.keys():
+            self.channels[cid].put_message(msg)
+        else:
+            print "new channel made"
+            self.channels[cid] = Channel(cid)
+            self.channels[cid].put_message(msg)
+
+    def handle_CPOLL(self, msg):
+        cid = msg.destination_key
+        if cid in self.channels.keys():
+            output = self.channels[cid].get_messages(float(msg.message))
+            newmsg = ChatMessage(self.owner, msg.reply_to.key, self.owner, "NONE", msg.reply_to, output, "NONE" )
+                                #origin_node, destination_key, requester, sender, recipient, message, signature):
+            #newmsg.DESKEY = ChatMessage.passwrd_to_3DES(c)
+            newmsg.type = "CRESP"
+            newmsg.add_content("CHANNEL",cid)
+            newmsg.add_content("pollTime",time.time())
+            self.send_message(newmsg, msg.reply_to)
+        else:
+            pass #do nothing, there is no such channel yet
+
+    def poll_channels(self):
+        global subscribed_channels
+        for c in subscribed_channels.keys():
+           # print "pollin", c
+            lasttime = subscribed_channels[c]
+            chash = hash_util.hash_str(c)
+            newmsg = ChatMessage(self.owner, chash, self.owner, self.myinfo.gen_secret(False), "NONE", str(lasttime), "NONE" )
+            newmsg.type = "CPOLL"         
+            self.send_message(newmsg, None)
+            
+        time.sleep(1)
+        #print "polled", subscribed_channels
+
 def load_preferences(fileloc):
     output = []
     with open(fileloc,'rb') as pref_file:
@@ -277,5 +405,4 @@ def write_preferences(fileloc, userlist, password=None):
 #print crypto
 #print test.decrypt(crypto)
 #write_preferences("userinfo/data.txt",[test],password="mypass")
-
 

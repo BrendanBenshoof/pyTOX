@@ -18,7 +18,7 @@ class ThreadPoolMixIn(ThreadingMixIn):
     numThreads = 10
     allow_reuse_address = True  # seems to fix socket.error on server restart
 
-    def serve_forever(self,msg):
+    def serve_forever(self):
         '''
         Handle one request at a time until doomsday.
         '''
@@ -81,9 +81,9 @@ class NETWORK_SERVICE(object):
         # interrupt the program with Ctrl-C
         self.server_worker = WorkerManager()
         self.server_worker.set_target(self.server.serve_forever)
+        self.server_worker.ishandler = False
         self.server_worker.ideal_threads = 1
         self.server_worker.start()
-        self.server_worker.putjob("go")
 
         self.client_worker = WorkerManager()
         self.client_worker.set_target(self.sender_loop)

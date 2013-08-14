@@ -346,11 +346,11 @@ def message_handler_worker():
 def handle_message(msg):
     if client_worker is None:
         todo.put((msg.priority, msg))
-        print "handling an early message"
+        #print "handling an early message"
     else:
         while not todo.empty():
             try:
-                print "dumping message"
+                #print "dumping message"
                 x = todo.get()
                 client_worker.putjob(x)
             except:
