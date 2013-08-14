@@ -311,6 +311,7 @@ class ChatService(service.Service):
             pmsg.DESKEY = ChatMessage.passwrd_to_3DES(chan)
             pmsg.type = "CPOST"         
             pmsg.encrypt()
+            pmsg.DESKEY = None
             self.send_message(pmsg, None)
 
         if comand_st == "add": 
