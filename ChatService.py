@@ -346,7 +346,7 @@ class ChatService(service.Service):
 
 
     def handle_CPOST(self, msg):
-        #print "got a post"
+        print "got a post", msg.message
         cid = msg.destination_key
         if cid in self.channels.keys():
             self.channels[cid].put_message(msg)
@@ -356,6 +356,7 @@ class ChatService(service.Service):
             self.channels[cid].put_message(msg)
 
     def handle_CPOLL(self, msg):
+        print "|",
         cid = msg.destination_key
         if cid in self.channels.keys():
             output = self.channels[cid].get_messages(float(msg.message))
