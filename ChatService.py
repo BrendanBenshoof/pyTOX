@@ -307,11 +307,11 @@ class ChatService(service.Service):
             chan, msg = arg_str.split(" ",1)
             ckey = ChatMessage.passwrd_to_3DES(chan)
             chash = hash_util.hash_str(chan)
-            newmsg = ChatMessage(self.owner, chash, self.owner, self.myinfo.gen_secret(False), "NONE", msg, "NONE" )
-            newmsg.DESKEY = ChatMessage.passwrd_to_3DES(chan)
-            newmsg.type = "CPOST"         
-            newmsg.encrypt()
-            self.send_message(newmsg, None)
+            pmsg = ChatMessage(self.owner, chash, self.owner, self.myinfo.gen_secret(False), "NONE", msg, "NONE" )
+            pmsg.DESKEY = ChatMessage.passwrd_to_3DES(chan)
+            pmsg.type = "CPOST"         
+            pmsg.encrypt()
+            self.send_message(pmsg, None)
 
         if comand_st == "add": 
             self.add_friend(arg_str)
