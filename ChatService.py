@@ -13,7 +13,7 @@ from pyDes import *
 CHAT_SERVICE = "CHAT"
 KEYSIZE = 24
 
-subscribed_channels = {"GENERAL": 0.0}
+subscribed_channels = {"dev": 0.0}
 
 
 
@@ -204,15 +204,18 @@ class ChatService(service.Service):
             return True
         if msg.type == "CRESP":
             cname = self.get_channel_from_hashid(msg.get_content("CHANNEL"))
-            for m in msg.message:
-                #print m
-                ckey = ChatMessage.passwrd_to_3DES(cname)
-                chash = hash_util.hash_str(cname)
-                m.DESKEY = ChatMessage.passwrd_to_3DES(cname)
-                m.decrypt()
-                #cname = self.get_channel_from_hashid(chash)
-                print "["+cname+"]", m.message
-            subscribed_channels[cname] = msg.get_content("pollTime")
+            if len(msg.message) > 0:
+                print msg.message
+                for m in msg.message:
+                    #print m
+                    ckey = ChatMessage.passwrd_to_3DES(cname)
+                    chash = hash_util.hash_str(cname)
+                    m.DESKEY = ChatMessage.passwrd_to_3DES(cname)
+                    print len(m.message)
+                    m.decrypt()
+                    #cname = self.get_channel_from_hashid(chash)
+                    print "["+cname+"]", m.message
+                subscribed_channels[cname] = msg.get_content("pollTime")
             return True
         if msg.type == "CPOST":
             self.handle_CPOST(msg)
