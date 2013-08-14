@@ -91,6 +91,8 @@ class ChatMessage(message.Message):
         self.DESKEY = ChatMessage.decode_DES_key(random.randint(0,2**(8*24)))
         self.message = message
         self.signature = signature
+        self.encrypted = False
+        self.secured = False
     @classmethod
     def decode_DES_key(cls,keyInt):
         results = []
@@ -115,19 +117,35 @@ class ChatMessage(message.Message):
         return cls.decode_DES_key(keyint)
 
     def encrypt(self):
-        d = triple_des(self.DESKEY)
-        self.message = d.encrypt(self.message, padmode=PAD_PKCS5)
+        if not self.encrypted:
+            d = triple_des(self.DESKEY)
+            self.message = d.encrypt(self.message, padmode=PAD_PKCS5)
+            self.encrypted = True
+        else:
+            raise Error("Encrypting an already encrypted message")
 
     def decrypt(self):
         #return rsa.decrypt(msg, self.privatekey)
-        d = triple_des(self.DESKEY, padmode=PAD_PKCS5)
-        self.message = d.decrypt(self.message)
+        if self.encrypted:
+            d = triple_des(self.DESKEY)
+            self.message = d.decrypt(self.message, padmode=PAD_PKCS5)
+            self.encrypted = False
+        else:
+            raise Error("Decrypting an already decrypted message")
 
     def secure(self, dest):
-        self.DESKEY = dest.encrypt(str(ChatMessage.encode_DES_key(self.DESKEY)))
-
+        if not self.secured:
+            self.DESKEY = dest.encrypt(str(ChatMessage.encode_DES_key(self.DESKEY)))
+            self.secured = True
+        else:
+            raise Error("Re-securing a secure message message")
     def desecure(self, dest):
-        self.DESKEY = ChatMessage.decode_DES_key(int(dest.decrypt(self.DESKEY)))
+        if self.secured:
+            self.DESKEY = ChatMessage.decode_DES_key(int(dest.decrypt(self.DESKEY)))
+            self.secured = False
+        else:
+            raise Error("de-securing an unsecure message message")
+
 message.register(ChatMessage)
 
 class Channel(object):
