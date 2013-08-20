@@ -174,7 +174,6 @@ class Channel(object):
 
     def put_message(self, msg):
         now = time.time()
-        msg = copy.deepcopy(msg)
         if not msg.encrypted:
             print "somebody tried to post cleartext"
             return
@@ -239,6 +238,7 @@ class ChatService(service.Service):
                     chash = hash_util.hash_str(cname)
                     m.DESKEY = ChatMessage.passwrd_to_3DES(cname)
                     print len(m.message)
+                    m = copy.deepcopy(m)
                     m.decrypt()
                     #cname = self.get_channel_from_hashid(chash)
                     print "["+cname+"]", m.message
