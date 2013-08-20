@@ -6,6 +6,7 @@ import random
 import rsa
 import time
 import hashlib
+import copy
 from worker_handler import WorkerManager
 from pyDes import *
 
@@ -173,6 +174,10 @@ class Channel(object):
 
     def put_message(self, msg):
         now = time.time()
+        msg = copy.deepcopy(msg)
+        if not msg.encrypted:
+            print "somebody tried to post cleartext"
+            return
         #print "putmsg", now, msg
         self.record.append([now, msg])
         for r in self.record:
@@ -221,7 +226,6 @@ class ChatService(service.Service):
 
     def handle_message(self, msg):
         #print "got", msg, msg.recipient
-
         #print to, to.hashid, self.myinfo.hashid
         if msg.type == "CPOLL":
             self.handle_CPOLL(msg)
@@ -229,9 +233,8 @@ class ChatService(service.Service):
         if msg.type == "CRESP":
             cname = self.get_channel_from_hashid(msg.get_content("CHANNEL"))
             if len(msg.message) > 0:
-                print msg.message
                 for m in msg.message:
-                    #print m
+                    print m
                     ckey = ChatMessage.passwrd_to_3DES(cname)
                     chash = hash_util.hash_str(cname)
                     m.DESKEY = ChatMessage.passwrd_to_3DES(cname)
