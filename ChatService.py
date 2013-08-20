@@ -122,7 +122,7 @@ class ChatMessage(message.Message):
             d = triple_des(self.DESKEY)
             self.message = d.encrypt(self.message, padmode=PAD_PKCS5)
             self.encrypted = True
-            print "encrypting"
+            #print "encrypting"
         else:
             raise Exception("Encrypting an already encrypted message")
 
@@ -132,7 +132,7 @@ class ChatMessage(message.Message):
             d = triple_des(self.DESKEY)
             self.message = d.decrypt(self.message, padmode=PAD_PKCS5)
             self.encrypted = False
-            print "decrypting"
+            #print "decrypting"
         else:
             raise Exception("Decrypting an already decrypted message")
 
@@ -175,7 +175,7 @@ class Channel(object):
     def put_message(self, msg):
         now = time.time()
         if not msg.encrypted:
-            print "somebody tried to post cleartext"
+            #print "somebody tried to post cleartext"
             return
         #print "putmsg", now, msg
         self.record.append([now, msg])
@@ -233,15 +233,17 @@ class ChatService(service.Service):
             cname = self.get_channel_from_hashid(msg.get_content("CHANNEL"))
             if len(msg.message) > 0:
                 for m in msg.message:
-                    print m
+                    #print m
                     ckey = ChatMessage.passwrd_to_3DES(cname)
                     chash = hash_util.hash_str(cname)
                     m.DESKEY = ChatMessage.passwrd_to_3DES(cname)
-                    print len(m.message)
+                    #print len(m.message)
                     m = copy.deepcopy(m)
                     m.decrypt()
+                    m_owner = UserInfo.from_secret(m.sender)
                     #cname = self.get_channel_from_hashid(chash)
-                    print "["+cname+"]", m.message
+                    if str(m_owner.hashid) != str(self.myinfo.hashid):
+                        print "<"+cname+">","["+m_owner.handle+"]", m.message
                 subscribed_channels[cname] = msg.get_content("pollTime")
             return True
         if msg.type == "CPOST":
@@ -249,7 +251,7 @@ class ChatService(service.Service):
             return True
         to = UserInfo.from_secret(msg.recipient)
         if not hash_util.hash_equal(to.hashid,self.myinfo.hashid):
-            print("got somebody else's message")
+            #print("got somebody else's message")
             return True
         if msg.type == "CHAT":
             origin = UserInfo.from_secret(msg.sender)
@@ -296,17 +298,17 @@ class ChatService(service.Service):
 
     def attach_to_console(self):
         ### return a list of command-strings
-        return ["send", "add", "who","whoami", "save", "rename", "ping", "listen","post"]
+        return ["/send", "/add", "/who","/whoami", "/save", "/rename", "/ping", "/listen","/post"]
 
     def handle_command(self, comand_st, arg_str):
+        #print "debug", comand_st, arg_str
         global subscribed_channels
-        if not self.channelsurfer.running:
-            self.channelsurfer.start()
         ### one of your commands got typed in
-        if comand_st == "listen":
+        if comand_st == "/listen":
             chan = arg_str
-            subscribed_channels[chan] = 0.0
-        if comand_st == "post":
+            if not chan in subscribed_channels.keys():
+                subscribed_channels[chan] = 0.0
+        if comand_st == "/post":
             chan, msg = arg_str.split(" ",1)
             ckey = ChatMessage.passwrd_to_3DES(chan)
             chash = hash_util.hash_str(chan)
@@ -317,9 +319,9 @@ class ChatService(service.Service):
             pmsg.DESKEY = None
             self.send_message(pmsg, None)
 
-        if comand_st == "add": 
+        if comand_st == "/add": 
             self.add_friend(arg_str)
-        if comand_st == "send":
+        if comand_st == "/send":
             args = arg_str.split(" ",1)
             to_str = args[0]
             to = self.get_friend(to_str)
@@ -334,18 +336,18 @@ class ChatService(service.Service):
             newmsg.encrypt()
             newmsg.secure(to)
             self.send_message(newmsg, None)
-        if comand_st == "whoami":
+        if comand_st == "/whoami":
             print( self.myinfo.gen_secret(False))
-        if comand_st == "who":
+        if comand_st == "/who":
             print("Your friends are:")
             for f in self.friends:
                 print(f.handle)
             for f in self.friends:
                 self.ping(f.handle)
-        if comand_st == "save":
+        if comand_st == "/save":
             mylist = [self.myinfo]+self.friends
             write_preferences("userinfo/data.txt",mylist)
-        if comand_st == "rename":
+        if comand_st == "/rename":
             args = arg_str.split(" ")
             old = args[0]
             new = args[1]
@@ -353,7 +355,7 @@ class ChatService(service.Service):
             if not f is None:
                 f.handle = new
                 print(old+" has been renamed "+new)
-        if comand_st == "ping":
+        if comand_st == "/ping":
             user = arg_str
             self.ping(user)
 
@@ -374,12 +376,12 @@ class ChatService(service.Service):
 
 
     def handle_CPOST(self, msg):
-        print "got a post", msg.message
+        #print "got a post", msg.message
         cid = msg.destination_key
         if cid in self.channels.keys():
             self.channels[cid].put_message(msg)
         else:
-            print "new channel made"
+            #print "new channel made"
             self.channels[cid] = Channel(cid)
             self.channels[cid].put_message(msg)
 
@@ -415,7 +417,7 @@ def load_preferences(fileloc):
     with open(fileloc,'rb') as pref_file:
         for l in pref_file:
             output.append(UserInfo.from_secret(l))
-        print output
+        #print output
     return output
 
 def write_preferences(fileloc, userlist, password=None):

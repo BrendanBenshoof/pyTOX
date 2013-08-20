@@ -45,9 +45,10 @@ def attach_services():
         if not commands_list is None:
             for c in commands_list:
                 commands[c] = services[s_name]
+chat = None
 
 def setup_Node(addr="localhost", port=None):
-    global myhashkey
+    global myhashkey, chat
     node.IPAddr = addr
     node.ctrlPort = port
     chat = ChatService.ChatService()
@@ -77,50 +78,92 @@ def join_ring(node_name, node_port):
 def no_join():
     node.create()
 
+class Context(object): #a context describes a place a user can type, and the message has to go somewhere
+    def __init__(self, name, type, dest):
+        self.name = name
+        self.type = type
+        self.dest = dest
+        self.chatserv = chat
+
+    def focus(self):
+        if self.type == "channel":
+            print "chatting on channel",self.dest
+        else:
+            print "chatting with", self.dest
+
+    def say(self, mstr):
+        command = ""
+        args = ""
+        if self.type == "chat":
+            command = "/send"
+            args = self.dest+" "+mstr
+        elif self.type == "channel":
+            command = "/post"
+            args = args = self.dest+" "+mstr
+        #print "say", command, args
+        mytarget = chat.handle_command(command, args)
+        t = Thread(target=mytarget)
+        t.daemon = True
+        t.start()       
+
+
 def console():
-    cmd = "-"
-    loaded_script = Queue.Queue()
-    try:
-        if loaded_script.empty():
-            cmd = raw_input()
-        else:
-            cmd = loaded_script.get()
-            loaded_script.task_done()
-    except EOFError: #the user does not have a terminal
-        pass
-    while not ( cmd == "q" or cmd == "Q"):
-        command, args = None, None
-        splitted = cmd.split(' ',1)
-        if len(splitted) >= 1:
-            command = splitted[0]
-        if len(splitted) == 2:
-            args = splitted[1]
-        if command in commands.keys():
-            mytarget = lambda: commands[command].handle_command(command, args)
-            t = Thread(target=mytarget)
-            t.daemon = True
-            t.start()
-        elif command == "run":
-            file2open = file(args,"r")
-            for l in file2open:
-                loaded_script.put(l)
-            file2open.close()
-        elif command == "stat":
-            input_size = node.todo.qsize();
-            print "backlog: "+str(input_size)
-        else:
-            print "successor  ", node.successor
-            print "predecessor", node.predecessor
-        try:
-            if loaded_script.empty():
-                cmd = raw_input()
+    if not chat.channelsurfer.running:
+        chat.channelsurfer.start()
+    curr_context = Context("dev","channel","dev")
+    curr_context.focus()
+    userinput = raw_input()
+    while not ( userinput == "/q" or userinput == "/Q"):
+        
+        if len(userinput) >0 and userinput[0]!= "/":#handle raw_input
+            curr_context.say(userinput)
+        elif len(userinput) >0  and userinput[0]== "/": #this is a command
+            precommand = userinput.split(" ",1)
+            command = precommand[0]
+            if command == "/chan":
+                args = precommand[1]
+                curr_context = Context(args, "channel", args)
+                curr_context.focus()
+                chat.handle_command("/listen",args)
+            elif command == "/chat":
+                args = precommand[1]
+                if not chat.get_friend(args) is None:
+                    curr_context.focus()
+                    curr_context = Context(args,"chat",args)
+            elif command == "/help" or command == "/h" or command == "/?":
+                print """
+This is the Help Document:
+It is mostly a placeholder
+commands:
+/chat $friendname       --- Directs all input as chat to given friend
+
+/chan $channame         --- Directs all input to the given channel
+                            listens to the channel if you are not already
+
+/add $userinfopack      --- given the massive pile of encoded RSA key info 
+                            for a user, it adds them as a friend
+
+/listen $channame       --- adds the channel to the list you listen to
+
+/rename $oldnic $newnic --- renames a friend (only shows change in chats
+                            not channels)
+
+/ping $friend           --- sends a ping to check if a friend is online
+
+/who                    --- pings all your friends
+
+/whoami                 --- prints the string you need to give other 
+                        users in order to add you as a friend
+"""
             else:
-                cmd = loaded_script.get()
-                loaded_script.task_done()
-        except EOFError: #the user does not have a terminal
-            print "I do not see a terminal!"
-            time.sleep(1)
-            pass
+                args = ""
+                if len(precommand) > 1:
+                    args = precommand[1]
+                mytarget = chat.handle_command(command, args)
+                t = Thread(target=mytarget)
+                t.daemon = True
+                t.start()
+        userinput = raw_input("")
     node.net_server.stop()
 
 def main():
