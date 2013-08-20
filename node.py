@@ -20,15 +20,14 @@ from message import *
 #import dummy_network as
 import globals
 import Queue
-import cerealizer
-from worker_handler import WorkerManager
+import cerealizer as pickle
+
 
 # Debug variables
 TEST_MODE = False   #duh
 VERBOSE = False      # True for various debug messages, False for a more silent execution.
 net_server = None
 MAINTENANCE_PERIOD = 0.2
-client_worker = None
 
 class Node_Info():
     """This is struct containing the info of other nodes.  
@@ -62,8 +61,7 @@ class Node_Info():
 
     def  __hash__(self):
         return int(self.key.key,16)
-
-cerealizer.register(Node_Info)
+pickle.register(Node_Info)
 
 """This class represents the current node in the Chord Network.
 We try to follow Stoica et al's scheme as closely as possible here,
@@ -160,17 +158,15 @@ def join(node):
     send_message(find, node)
 #########We shoudl clean this up    
 def startup():
-    global client_worker
     if TEST_MODE:
         print "Startup"
     t = Thread(target=kickstart)
     t.setDaemon(True)
     t.start()
-    client_worker = WorkerManager()
-    client_worker.set_target(worker_handle_message)
-    client_worker.ideal_threads = 2
-    client_worker.start()
-
+    for i in range(0,2):
+        t = Thread(target=message_handler_worker)
+        t.setDaemon(True)
+        t.start()
 
 def kickstart():
     if TEST_MODE:
@@ -256,7 +252,7 @@ def fix_fingers(n=1):
     for i in range(0,n):
         if successor != thisNode and predecessor != thisNode:
             next_finger = next_finger + 1
-            if next_finger >= KEY_SIZE:
+            if next_finger > KEY_SIZE:
                 next_finger = 1
             if TEST_MODE:
                 print "Fix Fingers + " + str(next_finger)
@@ -344,24 +340,12 @@ def message_handler_worker():
         todo.task_done()
 
 def handle_message(msg):
-    if client_worker is None:
-        todo.put((msg.priority, msg))
-        #print "handling an early message"
-    else:
-        while not todo.empty():
-            try:
-                #print "dumping message"
-                x = todo.get()
-                client_worker.putjob(x)
-            except:
-                pass
-        #print "actually handling"
-        client_worker.putjob((msg.priority, msg))
+    todo.put((msg.priority, msg))
 
-def worker_handle_message(datum):
-    #print "message handler", datum
-    priority, msg = datum
-    if I_own_hash(msg.destination_key):  # if I'm responsible for this key
+def worker_handle_message(msg):
+    if I_own_hash(msg.destination_key) or successor == thisNode:  # if I'm responsible for this key
+        if successor == thisNode and not successor == predecessor:
+            print "!"
         try:
             myservice = services[msg.service]
         except KeyError:
