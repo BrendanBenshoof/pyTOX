@@ -40,25 +40,25 @@ You can change this context by using /chat or /chan
 
 commands:
 
-/chat $friendname       --- Directs all input as chat to given friend
+    /chat $friendname       --- Directs all input as chat to given friend
 
-/chan $channame         --- Directs all input to the given channel
-                            listens to the channel if you are not already
+    /chan $channame         --- Directs all input to the given channel
+                                listens to the channel if you are not already
 
-/add $userinfopack      --- given the massive pile of encoded RSA key info 
-                            for a user, it adds them as a friend
+    /add $userinfopack      --- given the massive pile of encoded RSA key info 
+                                for a user, it adds them as a friend
 
-/listen $channame       --- adds the channel to the list you listen to
+    /listen $channame       --- adds the channel to the list you listen to
 
-/rename $oldnic $newnic --- renames a friend (only shows change in chats
-                            not channels)
+    /rename $oldnic $newnic --- renames a friend (only shows change in chats
+                                not channels)
 
-/ping $nic           --- sends a ping to check if a friend is online
+    /ping $nic              --- sends a ping to check if a friend is online
 
-/who                    --- pings all your friends
+    /who                    --- pings all your friends
 
-/whoami                 --- prints the string you need to give other 
-                        users in order to add you as a friend
+    /whoami                 --- prints the string you need to give other 
+                            users in order to add you as a friend
 
 
 currently running an etry point at 131.96.131.124 9000
