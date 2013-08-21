@@ -204,7 +204,7 @@ class ChatService(service.Service):
 
         try:
             print( "loading config!")
-            file_load = load_preferences("userinfo/data.txt")
+            file_load = load_preferences("data.txt")
             self.myinfo = file_load[0]
             if len(file_load) > 1:
                 self.friends = file_load[1:]
@@ -214,7 +214,7 @@ class ChatService(service.Service):
             print( "enter your desired handle:")
             handle = raw_input()
             self.myinfo = UserInfo.generate_new(handle)
-            write_preferences("userinfo/data.txt",[self.myinfo])
+            write_preferences("data.txt",[self.myinfo])
         print( "you are logged in as:", self.myinfo.handle)
 
     def get_channel_from_hashid(self, hid):
@@ -346,7 +346,7 @@ class ChatService(service.Service):
                 self.ping(f.handle)
         if comand_st == "/save":
             mylist = [self.myinfo]+self.friends
-            write_preferences("userinfo/data.txt",mylist)
+            write_preferences("data.txt",mylist)
         if comand_st == "/rename":
             args = arg_str.split(" ")
             old = args[0]

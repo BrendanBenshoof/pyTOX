@@ -27,9 +27,7 @@ def myIP():
         return "127.0.0.1"
     
 
-# backwards-compatibility use of global vars...encapsulation is easily
-# possible by ensuring all functionality lives in a service with a reference
-# to router which would then be instantiated in main()
+
 services = {}
 commands = {}
 myhashkey = None
@@ -114,7 +112,6 @@ def console():
     curr_context.focus()
     userinput = raw_input()
     while not ( userinput == "/q" or userinput == "/Q"):
-        
         if len(userinput) >0 and userinput[0]!= "/":#handle raw_input
             curr_context.say(userinput)
         elif len(userinput) >0  and userinput[0]== "/": #this is a command
@@ -163,7 +160,7 @@ commands:
                 t = Thread(target=mytarget)
                 t.daemon = True
                 t.start()
-        userinput = raw_input("")
+        userinput = raw_input()
     node.net_server.stop()
 
 def main():
