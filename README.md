@@ -18,19 +18,28 @@ Be portable, if you copy your userinfo file then you can use the client/server o
 
 currently stable to use, just not fun to use yet
 
+
 how to install:
+
     git clone https://github.com/BrendanBenshoof/pyTOX.git
-    
+
+
 how to use:
+
     ./pyTOX (launches using a random port and the default seed node chronus.cs.gsu.edu)
+    
     ./pyTOX <portnumber> (launches using the given port. This is usefull so you can setup firewall exceptions and port forwarding)
+    
     ./pyTOX <portnumber> <IP of seed node> <port on seed node> (this lets you pick your port and connect to a specific seed node. This is usefull for when chronus is down)
 
 using the program: (this is the rip from /help in pyTOX)
+
 If you type without a "/" then it just sends the line to whatever chat context you are in (by default channel "dev")
+
 You can change this context by using /chat or /chan
 
 commands:
+
 /chat $friendname       --- Directs all input as chat to given friend
 
 /chan $channame         --- Directs all input to the given channel
@@ -44,7 +53,7 @@ commands:
 /rename $oldnic $newnic --- renames a friend (only shows change in chats
                             not channels)
 
-/ping $friend           --- sends a ping to check if a friend is online
+/ping $nic           --- sends a ping to check if a friend is online
 
 /who                    --- pings all your friends
 
