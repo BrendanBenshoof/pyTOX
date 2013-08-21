@@ -94,6 +94,7 @@ class ChatMessage(message.Message):
         self.signature = signature
         self.encrypted = False
         self.secured = False
+        self.sent_time = time.time()
     @classmethod
     def decode_DES_key(cls,keyInt):
         results = []
@@ -200,6 +201,7 @@ class ChatService(service.Service):
         self.channelsurfer.ideal_threads = 1
         self.channelsurfer.target = self.poll_channels
         self.channelsurfer.ishandler = False
+        self.last_print_time = 0.0
         
 
         try:
@@ -240,11 +242,14 @@ class ChatService(service.Service):
                     #print len(m.message)
                     m = copy.deepcopy(m)
                     m.decrypt()
-                    m_owner = UserInfo.from_secret(m.sender)
-                    #cname = self.get_channel_from_hashid(chash)
-                    if str(m_owner.hashid) != str(self.myinfo.hashid):
-                        print "<"+cname+">","["+m_owner.handle+"]", m.message
-                subscribed_channels[cname] = msg.get_content("pollTime")
+                    if m.sent_time > self.last_print_time:
+                        m_owner = UserInfo.from_secret(m.sender)
+                        #cname = self.get_channel_from_hashid(chash)
+                        if str(m_owner.hashid) != str(self.myinfo.hashid):
+                            print "<"+cname+">","["+m_owner.handle+"]", m.message
+                        self.last_print_time = m.sent_time
+                if subscribed_channels[cname] < msg.get_content("pollTime"):
+                    subscribed_channels[cname] = msg.get_content("pollTime")
             return True
         if msg.type == "CPOST":
             self.handle_CPOST(msg)
